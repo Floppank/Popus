@@ -444,8 +444,10 @@
           <ul class="space-y-1 text-slate-300">
             <li>• <strong>A / D</strong> — быстрый бег влево и вправо (стрелки — доп. опция)</li>
             <li>• <strong>W / Пробел</strong> — прыжок (удержание меняет высоту), Двойной прыжок и Wall Jump</li>
-            <li>• <strong>S</strong> — присесть / спрыгнуть сквозь золотую парящую платформу / интеракт</li>
+            <li>• <strong>S</strong> — присед на земле (уклон от высоких лучей) / спрыгнуть сквозь золотую парящую платформу / быстрое падение в воздухе</li>
             <li>• <strong>ЛКМ или J</strong> — 3-ударное комбо «Клинка Эха» (пополняет заряды Магии/Фокуса)</li>
+            <li>• <strong>I, W + J, клик над героем или колесо мыши вверх</strong> — удар мечом ВВЕРХ (отдельный хитбокс над головой, +25% урона по летающим)</li>
+            <li>• <strong>Геймпад</strong> — стик/крестовина: движение, A: прыжок, X: меч, Y или правый стик вверх: удар вверх, B: рывок, RB: блок</li>
             <li>• <strong>ПКМ, Shift или K</strong> — Рывок / Dash (20 стамины, КД 0.8с, частичные i-frames)</li>
             <li>• <strong>E или L</strong> — Теневой Заряд (пробивает щиты и сбивает парящие черепа/глаза)</li>
             <li>• <strong>Q</strong> — Удар волной (Shockwave AoE: 35 стамины, сносит рои и снаряды)</li>
@@ -564,6 +566,8 @@
       <span class="text-slate-500">•</span>
       <span><strong>ЛКМ</strong> Меч</span>
       <span class="text-slate-500">•</span>
+      <span><strong>I / W+J</strong> Удар вверх</span>
+      <span class="text-slate-500">•</span>
       <span><strong>ПКМ</strong> Заряд/Рывок</span>
       <span class="text-slate-500">•</span>
       <span><strong>E/Q</strong> Навык</span>
@@ -581,6 +585,10 @@
         <button id="btnTouchAttack" type="button" class="touch-btn w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-rose-400 font-black text-xs" title="Атака Клинком (ЛКМ / J)">
           <span>⚔️</span>
           <span class="text-[9px] text-slate-200">ATK</span>
+        </button>
+        <button id="btnTouchAttackUp" type="button" aria-label="Attack up" class="touch-btn w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-sky-300 font-black text-xs" title="Удар вверх (I / W+J / мышь вверх)">
+          <span>⬆️</span>
+          <span class="text-[9px] text-slate-200">ATK↑</span>
         </button>
         <button id="btnTouchParry" type="button" class="touch-btn w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-cyan-300 font-black text-xs" title="Парирование / Крюк (F / C)">
           <span>🛡️</span>
@@ -609,10 +617,9 @@
     // =========================================================================
     window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => {
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' '].includes(e.key)) {
-        if (document.activeElement === document.body || document.activeElement === document.getElementById('gameCanvas')) {
-          e.preventDefault();
-        }
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+        const focused = document.activeElement;
+        if (!focused || focused === document.body || focused.id === 'gameCanvas') e.preventDefault();
       }
     }, { passive: false });
 
@@ -645,33 +652,90 @@
       '46. Разлом реальности', '47. Зеркальные залы', '48. Часовой шпиль', '49. Тронная дорога', '50. ФИНАЛ: Абразак'
     ];
 
+    // Боссы стоят на каждом 5-м уровне. tier (1..10) задаёт рост сложности, kit[i] — атаки, которые
+    // добавляются в фазе i+1, minion — демоны-прислужники, flyFromPhase — с какой фазы босс летает.
     const BOSS_CONFIGS = {
-      5:  { nameRu: 'Лесной Дьяволёнок Корневик', hp: 520, phases: 3, color: '#22c55e', diff: '3.5/10', w: 58, h: 72, unlockMsg: 'Корневик повержен! Открыт: Wall Jump!' },
-      10: { nameRu: 'Шахтный Бес Гремлин', hp: 780, phases: 3, color: '#f97316', diff: '4.5/10', w: 64, h: 76, unlockMsg: 'Гремлин повержен! Открыт: Double Jump!' },
-      15: { nameRu: 'Ледяная Демоница Фростина', hp: 1100, phases: 3, color: '#38bdf8', diff: '5.5/10', w: 60, h: 78, unlockMsg: 'Фростина повержена! Усилен Блок и Парирование!' },
-      20: { nameRu: 'Небесный Падший Ветрел', hp: 1450, phases: 3, color: '#facc15', diff: '6.5/10', w: 68, h: 80, unlockMsg: 'Ветрел повержен! Открыт: Крюк-кошка (C)!' },
-      25: { nameRu: 'Адский Кузнец Морлок', hp: 1850, phases: 3, color: '#ef4444', diff: '7.0/10', w: 76, h: 84, unlockMsg: 'Морлок повержен! Открыт: Заряд Бездны (E)!' },
-      30: { nameRu: 'Космический Демон Звёздный Голод', hp: 2300, phases: 3, color: '#a855f7', diff: '7.5/10', w: 78, h: 84, unlockMsg: 'Звёздный Голод повержен! Открыт: Удар волной (Q)!' },
-      35: { nameRu: 'Кристальный Демон Эхо-Лиц', hp: 2800, phases: 3, color: '#e879f9', diff: '8.0/10', w: 72, h: 78, unlockMsg: 'Эхо-Лиц повержен! Открыто: Замедление времени (R)!' },
-      40: { nameRu: 'Пепельный Демон Вестник Тишины', hp: 3400, phases: 3, color: '#94a3b8', diff: '8.5/10', w: 68, h: 82, unlockMsg: 'Вестник Тишины повержен! Меч Испытания закалён!' },
-      45: { nameRu: 'Демон-Иллюзионист Маракум', hp: 4100, phases: 3, color: '#ec4899', diff: '9.0/10', w: 66, h: 80, unlockMsg: 'Маракум повержен! Врата Трона открыты!' },
-      50: { nameRu: 'Владыка Пустоты Абразак', hp: 5800, phases: 5, color: '#dc2626', diff: '10/10', w: 84, h: 92, unlockMsg: 'Абразак повержен! Открыт режим New Game+!' }
+      5:  { nameRu: 'Лесной Дьяволёнок Корневик', hp: 520, phases: 3, color: '#22c55e', diff: '3.5/10', w: 58, h: 72, unlockMsg: 'Корневик повержен! Открыт: Wall Jump!',
+            tier: 1, minion: 'grunt', kit: [['shock_slam'], ['hop_slam'], ['summon']] },
+      10: { nameRu: 'Шахтный Бес Гремлин', hp: 780, phases: 3, color: '#f97316', diff: '4.5/10', w: 64, h: 76, unlockMsg: 'Гремлин повержен! Открыт: Double Jump!',
+            tier: 2, minion: 'hopper', kit: [['bomb_lob', 'dash_charge'], ['summon'], ['hop_slam']] },
+      15: { nameRu: 'Ледяная Демоница Фростина', hp: 1100, phases: 3, color: '#38bdf8', diff: '5.5/10', w: 60, h: 78, unlockMsg: 'Фростина повержена! Усилен Блок и Парирование!',
+            tier: 3, minion: 'jelly', flyFromPhase: 1, kit: [['fan_shot', 'eruption'], ['dive'], ['rain', 'summon']] },
+      20: { nameRu: 'Небесный Падший Ветрел', hp: 1450, phases: 3, color: '#facc15', diff: '6.5/10', w: 68, h: 80, unlockMsg: 'Ветрел повержен! Открыт: Крюк-кошка (C)!',
+            tier: 4, minion: 'swarm', flyFromPhase: 1, kit: [['dive', 'rain'], ['gust', 'summon'], ['fan_shot']] },
+      25: { nameRu: 'Адский Кузнец Морлок', hp: 1850, phases: 3, color: '#ef4444', diff: '7.0/10', w: 76, h: 84, unlockMsg: 'Морлок повержен! Открыт: Заряд Бездны (E)!',
+            tier: 5, minion: 'hopper', kit: [['hop_slam', 'shock_slam', 'bomb_lob'], ['eruption', 'summon'], ['dash_charge']] },
+      30: { nameRu: 'Космический Демон Звёздный Голод', hp: 2300, phases: 3, color: '#a855f7', diff: '7.5/10', w: 78, h: 84, unlockMsg: 'Звёздный Голод повержен! Открыт: Удар волной (Q)!',
+            tier: 6, minion: 'jelly', flyFromPhase: 1, kit: [['pull', 'rain', 'fan_shot'], ['dive', 'summon'], ['spiral', 'homing']] },
+      35: { nameRu: 'Кристальный Демон Эхо-Лиц', hp: 2800, phases: 3, color: '#e879f9', diff: '8.0/10', w: 72, h: 78, unlockMsg: 'Эхо-Лиц повержен! Открыто: Замедление времени (R)!',
+            tier: 7, minion: 'teleporter', kit: [['teleport_strike', 'fan_shot', 'beam_high'], ['spiral', 'summon'], ['eruption']] },
+      40: { nameRu: 'Пепельный Демон Вестник Тишины', hp: 3400, phases: 3, color: '#94a3b8', diff: '8.5/10', w: 68, h: 82, unlockMsg: 'Вестник Тишины повержен! Меч Испытания закалён!',
+            tier: 8, minion: 'grabber', kit: [['beam_high', 'shock_slam', 'silence_orbs'], ['teleport_strike', 'rain', 'summon'], ['pull']] },
+      45: { nameRu: 'Демон-Иллюзионист Маракум', hp: 4100, phases: 3, color: '#ec4899', diff: '9.0/10', w: 66, h: 80, unlockMsg: 'Маракум повержен! Врата Трона открыты!',
+            tier: 9, minion: 'illusion', kit: [['summon', 'teleport_strike', 'spiral'], ['beam_high', 'homing'], ['rain', 'gust']] },
+      50: { nameRu: 'Владыка Пустоты Абразак', hp: 5800, phases: 5, color: '#dc2626', diff: '10/10', w: 84, h: 92, unlockMsg: 'Абразак повержен! Открыт режим New Game+!',
+            tier: 10, minion: 'mix', flyFromPhase: 3,
+            kit: [['fan_shot', 'shock_slam', 'dash_charge'], ['hop_slam', 'eruption', 'summon'], ['dive', 'rain', 'pull'], ['teleport_strike', 'beam_high', 'spiral'], ['homing', 'silence_orbs']] }
     };
 
-    // 10 архетипов врагов с визуальными классами точно по картинке (Око Бездны, Пылающий Череп, Бес с топорами, Гаргулья, Чернокнижник и т.д.)
+    // Архетипы врагов в порядке появления: minLevel/maxLevel задают, на каких уровнях тип встречается.
     const ENEMY_TYPES = [
-      { id: 'oculus_drone', visual: 'oculus_drone', nameRu: 'Орбитальный Глаз-Дрон Бездны', color: '#ff1e56', hp: 52, speed: 145, flying: true, shooter: true, bladeBurst: true },
-      { id: 'jelly', visual: 'eye', nameRu: 'Око Бездны (Медуза)', color: '#ec4899', hp: 36, speed: 125, flying: true },
-      { id: 'sky_archer', visual: 'skull', nameRu: 'Пылающий Череп (Стрелок)', color: '#38bdf8', hp: 42, speed: 120, flying: true, shooter: true },
-      { id: 'hopper', visual: 'imp_axe', nameRu: 'Рогатый Бес-Прыгун', color: '#9f1239', hp: 45, speed: 205, jumper: true },
-      { id: 'spring_golem', visual: 'imp_mace', nameRu: 'Демон-Крушитель', color: '#be123c', hp: 85, speed: 80, jumper: true, armoredBack: true },
-      { id: 'shieldbearer', visual: 'imp_shield', nameRu: 'Тёмный Щитоносец', color: '#64748b', hp: 70, speed: 90, frontShield: true },
-      { id: 'teleporter', visual: 'warlock', nameRu: 'Теневой Чернокнижник', color: '#e11d48', hp: 55, speed: 155, teleports: true, shooter: true },
-      { id: 'swarm', visual: 'skull', nameRu: 'Рой Синих Черепов', color: '#60a5fa', hp: 24, speed: 190, flying: true, isSwarm: true },
-      { id: 'grabber', visual: 'gargoyle', nameRu: 'Крылатая Гаргулья-Хватун', color: '#f97316', hp: 60, speed: 85, flying: true, pullsPlayer: true },
-      { id: 'artillery', visual: 'warlock', nameRu: 'Маг Кровавого Кристалла', color: '#ef4444', hp: 65, speed: 55, mortar: true },
-      { id: 'elite', visual: 'warlock', nameRu: 'Архимаг Разлома (Элита)', color: '#facc15', hp: 130, speed: 145, frontShield: true, eliteAura: true }
+      { id: 'grunt', visual: 'imp_axe', nameRu: 'Мелкий Бесёнок', color: '#9f1239', hp: 46, speed: 78, minLevel: 1, maxLevel: 16 },
+      { id: 'acolyte', visual: 'warlock', nameRu: 'Послушник Пустоты', color: '#e11d48', hp: 50, speed: 48, shooter: true, minLevel: 3, maxLevel: 22 },
+      { id: 'shieldbearer', visual: 'imp_shield', nameRu: 'Тёмный Щитоносец', color: '#64748b', hp: 70, speed: 90, frontShield: true, minLevel: 6 },
+      { id: 'artillery', visual: 'warlock', nameRu: 'Маг Кровавого Кристалла', color: '#ef4444', hp: 65, speed: 55, mortar: true, minLevel: 8 },
+      { id: 'hopper', visual: 'imp_axe', nameRu: 'Рогатый Бес-Прыгун', color: '#9f1239', hp: 45, speed: 150, jumper: true, minLevel: 10 },
+      { id: 'jelly', visual: 'eye', nameRu: 'Око Бездны (Медуза)', color: '#ec4899', hp: 36, speed: 125, flying: true, minLevel: 10 },
+      { id: 'sky_archer', visual: 'skull', nameRu: 'Пылающий Череп (Стрелок)', color: '#38bdf8', hp: 42, speed: 120, flying: true, shooter: true, minLevel: 11 },
+      { id: 'swarm', visual: 'skull', nameRu: 'Рой Синих Черепов', color: '#60a5fa', hp: 24, speed: 190, flying: true, isSwarm: true, minLevel: 13 },
+      { id: 'spring_golem', visual: 'imp_mace', nameRu: 'Демон-Крушитель', color: '#be123c', hp: 85, speed: 80, jumper: true, armoredBack: true, minLevel: 15 },
+      { id: 'oculus_drone', visual: 'oculus_drone', nameRu: 'Орбитальный Глаз-Дрон Бездны', color: '#ff1e56', hp: 52, speed: 145, flying: true, shooter: true, bladeBurst: true, minLevel: 17 },
+      { id: 'teleporter', visual: 'warlock', nameRu: 'Теневой Чернокнижник', color: '#e11d48', hp: 55, speed: 155, teleports: true, shooter: true, minLevel: 21 },
+      { id: 'grabber', visual: 'gargoyle', nameRu: 'Крылатая Гаргулья-Хватун', color: '#f97316', hp: 60, speed: 85, flying: true, pullsPlayer: true, minLevel: 23 },
+      { id: 'elite', visual: 'warlock', nameRu: 'Архимаг Разлома (Элита)', color: '#facc15', hp: 130, speed: 145, frontShield: true, eliteAura: true, minLevel: 30 },
+      { id: 'illusion', visual: 'warlock', nameRu: 'Иллюзия Маракума', color: '#ec4899', hp: 1, fixedHp: true, speed: 70, shooter: true, summonOnly: true }
     ];
+
+    // Кривая сложности: значения в опорных уровнях линейно интерполируются между собой.
+    // 1–5 обучение, 10–20 скорость и летающие/прыгающие враги, 30–40 комбинации и ловушки, 45–50 хардкор.
+    const DIFF_KEYS = [1, 5, 10, 20, 30, 40, 45, 50];
+    const DIFF_CURVE = {
+      hp:        [0.55, 0.70, 1.00, 1.60, 2.30, 3.10, 3.70, 4.40],
+      dmg:       [0.45, 0.60, 0.85, 1.10, 1.40, 1.70, 1.95, 2.20],
+      speed:     [0.70, 0.80, 1.00, 1.15, 1.25, 1.33, 1.40, 1.48],
+      telegraph: [1.00, 0.90, 0.72, 0.60, 0.50, 0.44, 0.40, 0.36],
+      cooldown:  [1.70, 1.50, 1.15, 1.00, 0.90, 0.82, 0.76, 0.70],
+      shotSpeed: [0.58, 0.66, 0.85, 1.00, 1.10, 1.18, 1.24, 1.30],
+      aggro:     [300, 340, 420, 480, 500, 520, 530, 540],
+      coinStep:  [30, 32, 40, 44, 48, 52, 54, 56],
+      density:   [1.0, 1.0, 1.3, 1.6, 2.0, 2.2, 2.5, 2.8],
+      trap:      [0.0, 0.25, 0.40, 0.55, 0.90, 1.05, 1.15, 1.25],
+      crumble:   [0.0, 0.0, 0.12, 0.22, 0.38, 0.48, 0.50, 0.55],
+      gap:       [70, 80, 100, 120, 150, 170, 180, 190]
+    };
+
+    const LEVEL_HINTS = {
+      1: '🎮 A/D — бег • W — прыжок • S — присед / спрыгнуть вниз • ЛКМ или J — меч',
+      11: '🦅 Летающие враги! Удар вверх: I, W+J, клик над героем или колесо мыши вверх',
+      31: '⚠️ Ловушки и хрупкие плиты: следи за «!» и не стой на месте',
+      46: '💀 Хардкор: у каждой атаки есть замах — читай «!» и уклоняйся'
+    };
+
+    function getDifficulty(levelNum) {
+      const lv = Math.max(1, Math.min(50, levelNum));
+      let i = 0;
+      while (i < DIFF_KEYS.length - 2 && lv > DIFF_KEYS[i + 1]) i++;
+      const t = (lv - DIFF_KEYS[i]) / (DIFF_KEYS[i + 1] - DIFF_KEYS[i]);
+      const d = { level: lv, checkpointEvery: lv <= 5 ? 2 : 3 };
+      for (const key in DIFF_CURVE) {
+        d[key] = DIFF_CURVE[key][i] + (DIFF_CURVE[key][i + 1] - DIFF_CURVE[key][i]) * t;
+      }
+      if (saveData.ngPlus) {
+        d.hp *= 1.35;
+        d.dmg *= 1.15;
+      }
+      return d;
+    }
 
     let currentLang = 'ru';
     let selectedBiomeTab = 1;
@@ -1524,13 +1588,82 @@
     // (Каменные мосты на колоннах, знамёна, подвесные фонари, парящие золотые уступы,
     //  зелёные кубы-черепа, золотые стелы-чекпоинты и наземные монеты 18 px!)
     // =========================================================================
+    // Детерминированный генератор: уровень выглядит одинаково при каждом перезапуске.
+    function makeRng(seed) {
+      let s = seed >>> 0;
+      return () => {
+        s = (s + 0x6D2B79F5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function makeEnemy(typeId, x, groundY, minX, maxX, diff, opts = {}) {
+      const eT = ENEMY_TYPES.find((t) => t.id === typeId) || ENEMY_TYPES[0];
+      const w = eT.visual === 'warlock' ? 40 : eT.visual === 'oculus_drone' ? 44 : 34;
+      const h = eT.visual === 'warlock' ? 50 : eT.visual === 'oculus_drone' ? 44 : eT.visual === 'skull' ? 34 : 40;
+      const y = eT.flying ? groundY - 150 : groundY - h;
+      const hp = eT.fixedHp ? eT.hp : Math.max(1, Math.round(eT.hp * diff.hp));
+      return {
+        typeId: eT.id,
+        visual: eT.visual,
+        nameRu: eT.nameRu,
+        color: eT.color,
+        x: Math.max(minX, Math.min(maxX, x)),
+        y,
+        baseY: y,
+        groundY,
+        w,
+        h,
+        vx: 0,
+        vy: 0,
+        dir: -1,
+        speed: eT.speed * diff.speed,
+        minX,
+        maxX,
+        hp,
+        maxHp: hp,
+        flying: Boolean(eT.flying),
+        shooter: Boolean(eT.shooter),
+        jumper: Boolean(eT.jumper),
+        frontShield: Boolean(eT.frontShield),
+        armoredBack: Boolean(eT.armoredBack),
+        teleports: Boolean(eT.teleports),
+        isSwarm: Boolean(eT.isSwarm),
+        pullsPlayer: Boolean(eT.pullsPlayer),
+        mortar: Boolean(eT.mortar),
+        eliteAura: Boolean(eT.eliteAura),
+        contactDmg: Math.max(4, Math.round(16 * diff.dmg)),
+        shotDmg: Math.max(4, Math.round(16 * diff.dmg)),
+        telegraph: diff.telegraph,
+        cooldownMult: diff.cooldown,
+        shotSpeed: diff.shotSpeed,
+        aggroRange: opts.summoned ? 900 : diff.aggro,
+        actionTimer: 1.2 + (opts.delay || 0),
+        windup: 0,
+        pendingAction: null,
+        altAction: false,
+        jumpT: -1,
+        diveT: -1,
+        bladeRadius: 24,
+        stunTimer: 0,
+        phase: opts.phase || 0,
+        summoned: Boolean(opts.summoned),
+        alive: true
+      };
+    }
+
     function buildLevel(levelNum) {
       const biomeIdx = Math.min(9, Math.floor((levelNum - 1) / 5));
       const biome = BIOMES[biomeIdx];
       const isBossLevel = Boolean(BOSS_CONFIGS[levelNum]);
+      const diff = getDifficulty(levelNum);
+      const rng = makeRng(levelNum * 9973 + 17);
 
       const levelWidth = isBossLevel ? 3600 + biomeIdx * 180 : 4200 + Math.round((levelNum / 50) * 7600);
       const baseFloorY = 530;
+      const coinStep = Math.round(diff.coinStep);
 
       const platforms = [];
       const coins = [];
@@ -1568,6 +1701,54 @@
           spawnY: plat.y - 44 - 2,
           activated: false
         });
+        return cpX;
+      }
+
+      // Типы врагов, доступные на этом уровне; более поздние (опасные) выпадают чаще
+      const pool = ENEMY_TYPES.filter((t) => !t.summonOnly && levelNum >= t.minLevel && levelNum <= (t.maxLevel || 99));
+      function pickType(filterFn) {
+        const filtered = filterFn ? pool.filter(filterFn) : pool;
+        const src = filtered.length ? filtered : pool;
+        let total = 0;
+        const weights = src.map((t, i) => {
+          const wgt = 1 + i * 0.6;
+          total += wgt;
+          return wgt;
+        });
+        let r = rng() * total;
+        for (let i = 0; i < src.length; i++) {
+          r -= weights[i];
+          if (r <= 0) return src[i];
+        }
+        return src[src.length - 1];
+      }
+
+      // Ловушки: кубы-черепа с 1-го биома, шипы с 8-го уровня, пилы с 16-го, огненные гейзеры с 24-го.
+      // cpX — центр чекпоинта на этой платформе: рядом с точкой возрождения ловушки не двигаются.
+      function addTrap(plat, tx, cpX) {
+        const kinds = ['skull_cube'];
+        if (levelNum >= 8) kinds.push('spikes');
+        if (levelNum >= 16) kinds.push('saw');
+        if (levelNum >= 24) kinds.push('flame');
+        let kind = kinds[Math.min(kinds.length - 1, Math.floor(Math.max(rng(), rng()) * kinds.length))];
+        const dmg = Math.round(18 * Math.max(0.7, diff.dmg));
+
+        if (kind === 'saw') {
+          let minX = Math.max(plat.x + 20, tx - 80);
+          let maxX = Math.min(plat.x + plat.w - 120, tx + 80);
+          if (cpX !== null) {
+            if (tx < cpX) maxX = Math.min(maxX, cpX - 94);
+            else minX = Math.max(minX, cpX + 60);
+          }
+          if (maxX - minX >= 40) {
+            hazards.push({ type: 'saw', x: minX, y: plat.y - 24, w: 34, h: 34, dmg, minX, maxX, dir: 1, speed: 80 * diff.speed });
+            return;
+          }
+          kind = 'spikes';
+        }
+        if (kind === 'skull_cube') hazards.push({ type: kind, x: tx, y: plat.y - 38, w: 40, h: 38, dmg });
+        else if (kind === 'spikes') hazards.push({ type: kind, x: tx, y: plat.y - 16, w: 56, h: 16, dmg });
+        else hazards.push({ type: 'flame', x: tx, y: plat.y - 96, w: 30, h: 96, dmg, clock: rng() * 3, lit: false, warn: false });
       }
 
       // 1. Первая готическая каменная платформа (с колоннами, знаменем, фонарями и стелой-чекпоинтом как слева на картинке!)
@@ -1585,7 +1766,7 @@
       };
       platforms.push(startPlat);
       addGroundedCheckpoint(startPlat, 130);
-      addGroundCoinsOnPlatform(startPlat, 210, 140, 42);
+      addGroundCoinsOnPlatform(startPlat, 210, 140, coinStep);
 
       // Парящие золотые платформы в стиле центра референса (ярус 1 и ярус 2 с Тёмным Магом!)
       const firstMidFloat = {
@@ -1609,7 +1790,7 @@
         active: true
       };
       platforms.push(firstMidFloat, firstTopFloat);
-      addGroundCoinsOnPlatform(firstMidFloat, 35, 35, 42);
+      addGroundCoinsOnPlatform(firstMidFloat, 35, 35, coinStep);
 
       if (isBossLevel) {
         const bridgePlat = {
@@ -1666,6 +1847,7 @@
 
         const bCfg = BOSS_CONFIGS[levelNum];
         const hpMult = saveData.ngPlus ? 1.35 : 1.0;
+        const flyFromPhase = bCfg.flyFromPhase || 99;
         const bossObj = {
           levelNum,
           nameRu: bCfg.nameRu,
@@ -1674,6 +1856,12 @@
           phases: bCfg.phases,
           phase: 1,
           color: bCfg.color,
+          tier: bCfg.tier,
+          kit: bCfg.kit,
+          minion: bCfg.minion,
+          flyFromPhase,
+          flying: flyFromPhase <= 1,
+          landed: false,
           x: arenaX + arenaW * 0.62,
           y: baseFloorY - bCfg.h,
           w: bCfg.w,
@@ -1684,14 +1872,28 @@
           minX: arenaX + 120,
           maxX: arenaX + arenaW - 140,
           floorY: baseFloorY,
+          arenaX,
+          arenaW,
           alive: true,
-          state: 'patrol',
-          stateTimer: 1.4,
-          attackType: 'fan_shot',
+          state: 'dormant',
+          stateTimer: 0,
+          attackType: '',
+          lastAttack: '',
           telegraphLabel: '',
+          chained: false,
           greedyHits: 0,
           greedyTimer: 0,
           hurtTimer: 0,
+          invuln: 0,
+          summonCd: 0,
+          attackClock: 0,
+          spin: 0,
+          hoverPhase: 0,
+          jumpFromX: 0,
+          jumpFromY: 0,
+          jumpToX: 0,
+          jumpDur: 0.7,
+          tpX: 0,
           unlockMsg: bCfg.unlockMsg
         };
 
@@ -1699,6 +1901,7 @@
           num: levelNum,
           titleRu: LEVEL_TITLES_RU[levelNum - 1],
           biome,
+          diff,
           width: arenaX + arenaW + 400,
           spawn: { x: 80, y: baseFloorY - 50 },
           portal: { x: arenaX + arenaW - 110, y: baseFloorY - 78, open: false },
@@ -1714,49 +1917,33 @@
         };
       }
 
-      // Стартовая группа врагов прямо как на референсе: Око Бездны, Синие Черепа, Бесы и Чернокнижник на верхнем уступе!
-      enemies.push(
-        {
-          typeId: 'oculus_drone', visual: 'oculus_drone', nameRu: 'Орбитальный Глаз-Дрон', color: '#ff1e56',
-          x: 250, y: baseFloorY - 150, baseY: baseFloorY - 150, w: 44, h: 44, vx: 0, vy: 0, dir: -1, speed: 145,
-          minX: 110, maxX: 520, hp: 52, maxHp: 52, flying: true, shooter: true, bladeBurst: true,
-          actionTimer: 1.1, bladeRadius: 24, lockOnTimer: 0, stunTimer: 0, phase: 0.0, alive: true
-        },
-        {
-          typeId: 'oculus_drone', visual: 'oculus_drone', nameRu: 'Орбитальный Глаз-Дрон', color: '#ff1e56',
-          x: 960, y: baseFloorY - 140, baseY: baseFloorY - 140, w: 44, h: 44, vx: 0, vy: 0, dir: -1, speed: 155,
-          minX: 620, maxX: 1180, hp: 56, maxHp: 56, flying: true, shooter: true, bladeBurst: true,
-          actionTimer: 0.9, bladeRadius: 24, lockOnTimer: 0, stunTimer: 0, phase: 1.6, alive: true
-        },
-        {
-          typeId: 'hopper', visual: 'imp_axe', nameRu: 'Рогатый Бес', color: '#9f1239',
-          x: 430, y: baseFloorY - 40, baseY: baseFloorY - 40, w: 34, h: 40, vx: 0, vy: 0, dir: -1, speed: 130,
-          minX: 310, maxX: 510, hp: 42, maxHp: 42, flying: false, jumper: true, actionTimer: 1.8, stunTimer: 0, phase: 1.1, alive: true
-        },
-        {
-          typeId: 'teleporter', visual: 'warlock', nameRu: 'Чернокнижник Кристалла', color: '#e11d48',
-          x: 735, y: baseFloorY - 225 - 52, baseY: baseFloorY - 225 - 52, w: 40, h: 52, vx: 0, vy: 0, dir: -1, speed: 60,
-          minX: 660, maxX: 820, hp: 65, maxHp: 65, flying: false, shooter: true, actionTimer: 1.4, stunTimer: 0, phase: 0, alive: true
-        },
-        {
-          typeId: 'sky_archer', visual: 'skull', nameRu: 'Пылающий Череп', color: '#38bdf8',
-          x: 920, y: baseFloorY - 175, baseY: baseFloorY - 175, w: 34, h: 34, vx: 0, vy: 0, dir: -1, speed: 110,
-          minX: 830, maxX: 1080, hp: 38, maxHp: 38, flying: true, shooter: true, actionTimer: 1.9, stunTimer: 0, phase: 2.0, alive: true
-        }
-      );
+      // Вступительная зона: один наземный враг вдали от точки появления, с 8-го уровня — маг на верхнем уступе
+      enemies.push(makeEnemy(pickType((t) => !t.flying).id, 430, baseFloorY, 320, 510, diff, { delay: 0.6 }));
+      if (levelNum >= 8) {
+        const caster = pickType((t) => !t.flying && (t.shooter || t.mortar));
+        enemies.push(makeEnemy(caster.id, 735, firstTopFloat.y, 660, 820, diff, { delay: 0.9 }));
+      }
 
       // Генерация основной цепочки каменных мостов до конца уровня
       let curX = 600;
       let curY = baseFloorY + 25;
       let segIndex = 0;
+      let sinceCheckpoint = 0;
+      let prevCrumble = false;
 
       while (curX < levelWidth - 750) {
         segIndex++;
-        const segW = 390 + ((levelNum * 53 + segIndex * 89) % 260);
+        sinceCheckpoint++;
+        const wantsCheckpoint = sinceCheckpoint >= diff.checkpointEvery;
+        // Хрупкие мосты не идут подряд и не несут чекпоинтов
+        const isCrumbleSeg = segIndex > 1 && !wantsCheckpoint && !prevCrumble && rng() < diff.crumble;
+        prevCrumble = isCrumbleSeg;
+
+        let segW = 390 + ((levelNum * 53 + segIndex * 89) % 260);
+        if (isCrumbleSeg) segW = Math.min(segW, 420);
         const stepY = ((segIndex % 3) - 1) * 45;
         curY = Math.max(320, Math.min(580, curY + stepY));
 
-        const isCrumbleSeg = (segIndex % 4 === 2);
         const plat = {
           x: curX,
           y: curY,
@@ -1775,27 +1962,25 @@
         platforms.push(plat);
 
         // Наземные монеты на каждом каменном мосту (высота 18 px, собираются просто бегом!)
-        addGroundCoinsOnPlatform(plat, 48, 48, 42);
+        addGroundCoinsOnPlatform(plat, 48, 48, coinStep);
 
-        if (segIndex % 3 === 0) {
-          addGroundedCheckpoint(plat, Math.round(segW * 0.5));
+        let cpX = null;
+        if (wantsCheckpoint) {
+          cpX = addGroundedCheckpoint(plat, Math.round(segW * 0.5));
+          sinceCheckpoint = 0;
         }
 
-        // Зелёные светящиеся череп-кубы (ловушки/алтари как на 3-й платформе референса!)
-        if (segIndex % 2 === 0 && segW > 410) {
-          hazards.push({
-            x: curX + segW * 0.62,
-            y: curY - 38,
-            w: 40,
-            h: 38,
-            type: 'skull_cube'
-          });
+        if (!isCrumbleSeg) {
+          const trapCount = Math.min(2, Math.floor(diff.trap) + (rng() < diff.trap % 1 ? 1 : 0));
+          const trapSlots = [0.62, 0.2];
+          for (let k = 0; k < trapCount; k++) addTrap(plat, curX + segW * trapSlots[k], cpX);
         }
 
         // Парящие золотые уступы с висячими скалами снизу
+        let upperPlat = null;
         if (segIndex % 2 === 1 && segIndex > 1) {
           jumpPads.push({ x: curX + segW - 68, y: curY - 12, w: 44, h: 12, vy: -750, bounceAnim: 0 });
-          const upperPlat = {
+          upperPlat = {
             x: curX + 65,
             y: curY - 145,
             w: Math.max(210, segW - 130),
@@ -1806,7 +1991,7 @@
             active: true
           };
           platforms.push(upperPlat);
-          addGroundCoinsOnPlatform(upperPlat, 35, 35, 42);
+          addGroundCoinsOnPlatform(upperPlat, 35, 35, coinStep);
           grappleRings.push({ x: curX + segW + 40, y: curY - 200 });
 
           if (stars.length < 3) {
@@ -1814,47 +1999,47 @@
           }
         }
 
-        // Добавление врагов на сегмент
-        const maxPool = Math.min(ENEMY_TYPES.length, 4 + Math.floor(levelNum / 5));
-        const eT = ENEMY_TYPES[(levelNum + segIndex) % maxPool];
-        const hpScale = (1 + (levelNum - 1) * 0.08) * (saveData.ngPlus ? 1.35 : 1.0);
-        const ey = eT.flying ? curY - 140 : curY - 40;
+        // Враги сегмента: число растёт с уровнем, второй враг дополняет первого (земля + воздух, щит + стрелок)
+        let enemyCount = Math.min(3, Math.floor(diff.density) + (rng() < diff.density % 1 ? 1 : 0));
+        if (levelNum <= 2 && segIndex === 1) enemyCount = 0;
+        if (isCrumbleSeg) enemyCount = pool.some((t) => t.flying) ? 1 : 0;
+        // На первых уровнях враги не патрулируют через точку возрождения
+        const groundMinX = cpX !== null && levelNum <= 5 ? cpX + 70 : curX + 36;
+        let firstType = null;
+        for (let k = 0; k < enemyCount; k++) {
+          let eT;
+          if (isCrumbleSeg) eT = pickType((t) => t.flying);
+          else if (!firstType) eT = rng() < 0.6 ? pickType((t) => !t.flying) : pickType();
+          else eT = pickType((t) => Boolean(t.flying) !== Boolean(firstType.flying) || Boolean(t.shooter) !== Boolean(firstType.shooter));
+          if (!firstType) firstType = eT;
 
-        enemies.push({
-          typeId: eT.id,
-          visual: eT.visual,
-          nameRu: eT.nameRu,
-          color: eT.color,
-          x: curX + segW * 0.42,
-          y: ey,
-          baseY: ey,
-          w: eT.visual === 'warlock' ? 40 : 34,
-          h: eT.visual === 'warlock' ? 50 : 40,
-          vx: 0,
-          vy: 0,
-          dir: -1,
-          speed: eT.speed,
-          minX: curX + 36,
-          maxX: curX + segW - 76,
-          hp: Math.round(eT.hp * hpScale),
-          maxHp: Math.round(eT.hp * hpScale),
-          flying: Boolean(eT.flying),
-          shooter: Boolean(eT.shooter),
-          jumper: Boolean(eT.jumper),
-          frontShield: Boolean(eT.frontShield),
-          armoredBack: Boolean(eT.armoredBack),
-          teleports: Boolean(eT.teleports),
-          isSwarm: Boolean(eT.isSwarm),
-          pullsPlayer: Boolean(eT.pullsPlayer),
-          mortar: Boolean(eT.mortar),
-          eliteAura: Boolean(eT.eliteAura),
-          actionTimer: 1.3 + (segIndex % 3) * 0.35,
-          stunTimer: 0,
-          phase: segIndex * 0.9,
-          alive: true
-        });
+          const onUpper = Boolean(upperPlat) && !eT.flying && (eT.shooter || eT.mortar) && rng() < 0.4;
+          const opts = { delay: (segIndex % 3) * 0.35 + k * 0.5, phase: segIndex * 0.9 + k };
+          if (onUpper) {
+            enemies.push(makeEnemy(eT.id, upperPlat.x + upperPlat.w * 0.5, upperPlat.y, upperPlat.x + 10, upperPlat.x + upperPlat.w - 50, diff, opts));
+          } else {
+            enemies.push(makeEnemy(eT.id, curX + segW * (0.36 + 0.2 * k), curY, groundMinX, curX + segW - 76, diff, opts));
+          }
+        }
 
-        curX += segW + 88 + ((segIndex * 29) % 52);
+        // Широкие провалы поздних уровней — с хрупкой ступенью посередине
+        const gap = Math.round(diff.gap + rng() * 40);
+        if (gap >= 170 && rng() < 0.6) {
+          platforms.push({
+            x: curX + segW + gap / 2 - 45,
+            y: curY + 10,
+            w: 90,
+            h: 16,
+            type: 'oneway',
+            destructibleType: 'crumble',
+            crumbleTimer: 0,
+            respawnTimer: 0,
+            rimColor: '#f97316',
+            floatingRock: true,
+            active: true
+          });
+        }
+        curX += segW + gap;
       }
 
       // Финальный золотой мост с синим руническим порталом (точно как справа на картинке!)
@@ -1871,7 +2056,7 @@
         active: true
       };
       platforms.push(endPlat);
-      addGroundCoinsOnPlatform(endPlat, 50, 165, 42);
+      addGroundCoinsOnPlatform(endPlat, 50, 165, coinStep);
       addGroundedCheckpoint(endPlat, 95);
 
       while (stars.length < 3) {
@@ -1882,6 +2067,7 @@
         num: levelNum,
         titleRu: LEVEL_TITLES_RU[levelNum - 1],
         biome,
+        diff,
         width: curX + 580,
         spawn: { x: 80, y: baseFloorY - 50 },
         portal: { x: endPlat.x + 410, y: endPlat.y - 84, open: true },
@@ -1910,7 +2096,160 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    const input = { left: false, right: false, down: false, jumpHeld: false, blockHeld: false };
+    // Ввод: клавиатура, мышь, сенсорные кнопки и геймпад — независимые источники, складываются по ИЛИ.
+    // Так отпускание одной клавиши не «съедает» другую (A + стрелка влево, W + пробел и т.п.).
+    const INPUT_FLAGS = ['left', 'right', 'down', 'up', 'jump', 'block', 'attack', 'attackUp'];
+    const inputSources = { kb: {}, mouse: {}, touch: {}, pad: {} };
+    const input = { left: false, right: false, down: false, up: false, jumpHeld: false, blockHeld: false, attackHeld: false, attackUpHeld: false };
+    const heldCodes = new Set();
+    const mouseState = { sx: 0, sy: 0 };
+    let lastHorizontalDir = 0;
+
+    // Физические клавиши (KeyboardEvent.code) не зависят от раскладки. Стрелки — дополнительный вариант.
+    const KEY_HOLD = {
+      KeyA: 'left', ArrowLeft: 'left',
+      KeyD: 'right', ArrowRight: 'right',
+      KeyS: 'down', ArrowDown: 'down',
+      KeyW: 'jump', ArrowUp: 'jump', Space: 'jump',
+      KeyK: 'block', KeyF: 'block',
+      KeyJ: 'attack', KeyI: 'attackUp'
+    };
+    const GAME_KEY_CODES = new Set([
+      'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+      'KeyJ', 'KeyI', 'KeyK', 'KeyF', 'KeyL', 'KeyE', 'KeyQ', 'KeyC', 'KeyR'
+    ]);
+    // Запасной путь только для устройств, которые не сообщают code (часть экранных клавиатур)
+    const KEY_FALLBACK = {
+      w: 'KeyW', a: 'KeyA', s: 'KeyS', d: 'KeyD', 'ц': 'KeyW', 'ф': 'KeyA', 'ы': 'KeyS', 'в': 'KeyD',
+      j: 'KeyJ', i: 'KeyI', k: 'KeyK', f: 'KeyF', l: 'KeyL', e: 'KeyE', q: 'KeyQ', c: 'KeyC', r: 'KeyR',
+      ' ': 'Space', arrowup: 'ArrowUp', arrowdown: 'ArrowDown', arrowleft: 'ArrowLeft', arrowright: 'ArrowRight',
+      shift: 'ShiftLeft', escape: 'Escape'
+    };
+
+    function resolveKeyCode(e) {
+      if (e.code) return e.code;
+      return KEY_FALLBACK[(e.key || '').toLowerCase()] || '';
+    }
+
+    function refreshInput() {
+      const any = (flag) => Boolean(inputSources.kb[flag] || inputSources.mouse[flag] || inputSources.touch[flag] || inputSources.pad[flag]);
+      const l = any('left');
+      const r = any('right');
+      // При зажатых обеих сторонах побеждает последняя нажатая
+      input.left = l && (!r || lastHorizontalDir < 0);
+      input.right = r && (!l || lastHorizontalDir > 0);
+      input.down = any('down');
+      input.up = any('up');
+      input.jumpHeld = any('jump');
+      input.blockHeld = any('block');
+      input.attackHeld = any('attack');
+      input.attackUpHeld = any('attackUp');
+    }
+
+    function setInput(source, flag, value) {
+      if (value && flag === 'left') lastHorizontalDir = -1;
+      if (value && flag === 'right') lastHorizontalDir = 1;
+      inputSources[source][flag] = value;
+      refreshInput();
+    }
+
+    function syncKeyboard() {
+      const kb = inputSources.kb;
+      for (const flag of INPUT_FLAGS) kb[flag] = false;
+      heldCodes.forEach((code) => {
+        const flag = KEY_HOLD[code];
+        if (flag) kb[flag] = true;
+      });
+      kb.up = heldCodes.has('KeyW') || heldCodes.has('ArrowUp');
+      refreshInput();
+    }
+
+    function clearAllInputs() {
+      heldCodes.clear();
+      for (const name in inputSources) {
+        for (const flag of INPUT_FLAGS) inputSources[name][flag] = false;
+      }
+      refreshInput();
+    }
+
+    // Курсор «над героем»: выше головы и в конусе вокруг вертикали — клик даёт удар вверх
+    function mouseAimsUp() {
+      const rect = canvas.getBoundingClientRect();
+      const sx = (mouseState.sx - rect.left) * (canvas.width / Math.max(1, rect.width));
+      const sy = (mouseState.sy - rect.top) * (canvas.height / Math.max(1, rect.height));
+      const offsetY = Math.max(0, (canvas.height - 680) * 0.5);
+      const dx = sx + gameState.cameraX - (player.x + player.w / 2);
+      const dy = sy + gameState.cameraY - offsetY - (player.y + player.h / 2);
+      return dy < -40 && Math.abs(dx) < -dy * 1.2;
+    }
+
+    function heldAttackDir() {
+      if (input.attackUpHeld) return 'up';
+      if (inputSources.mouse.attack) return mouseAimsUp() ? 'up' : 'forward';
+      if (input.attackHeld) return input.up ? 'up' : 'forward';
+      return null;
+    }
+
+    const padPrev = { active: false };
+    function pollGamepad() {
+      if (!navigator.getGamepads) return;
+      let gp = null;
+      const pads = navigator.getGamepads();
+      for (let i = 0; i < pads.length; i++) {
+        if (pads[i] && pads[i].connected) { gp = pads[i]; break; }
+      }
+      const pad = inputSources.pad;
+      if (!gp) {
+        if (padPrev.active) {
+          padPrev.active = false;
+          for (const flag of INPUT_FLAGS) pad[flag] = false;
+          refreshInput();
+        }
+        return;
+      }
+      padPrev.active = true;
+
+      const btn = (i) => Boolean(gp.buttons[i] && gp.buttons[i].pressed);
+      const pressed = (name, now) => {
+        const was = padPrev[name];
+        padPrev[name] = now;
+        return now && !was;
+      };
+      const ax = gp.axes[0] || 0;
+      const ay = gp.axes[1] || 0;
+      const left = ax < -0.35 || btn(14);
+      const right = ax > 0.35 || btn(15);
+      const down = ay > 0.55 || btn(13);
+      if (pressed('left', left)) lastHorizontalDir = -1;
+      if (pressed('right', right)) lastHorizontalDir = 1;
+
+      pad.left = left;
+      pad.right = right;
+      pad.down = down;
+      pad.up = ay < -0.55 || btn(12);
+      pad.jump = btn(0);
+      pad.block = btn(5);
+      pad.attack = btn(2);
+      pad.attackUp = btn(3);
+      refreshInput();
+
+      if (pressed('down', down)) tryDropThrough();
+      if (pressed('jump', btn(0))) requestJump();
+      if (pressed('attack', btn(2))) triggerMeleeAttack(input.up ? 'up' : 'forward');
+      // Y или правый стик вверх — удар вверх
+      if (pressed('attackUp', btn(3))) triggerMeleeAttack('up');
+      if (pressed('stickUp', (gp.axes[3] || 0) < -0.6)) triggerMeleeAttack('up');
+      if (pressed('dash', btn(1))) triggerDash();
+      if (pressed('block', btn(5))) triggerParry();
+      if (pressed('grapple', btn(4))) triggerGrapple();
+      if (pressed('blaster', btn(7))) triggerBlaster();
+      if (pressed('wave', btn(6))) triggerShockwave();
+      if (pressed('slow', btn(8))) triggerTimeSlow();
+      if (pressed('pause', btn(9))) {
+        if (gameState.mode === 'playing') pauseGame();
+        else if (gameState.mode === 'paused') resumeGame();
+      }
+    }
     let hitstopTimer = 0;
 
     const gameState = {
@@ -1931,7 +2270,9 @@
       projectiles: [],
       slashEffects: [],
       echoAuras: [],
-      weatherParticles: []
+      weatherParticles: [],
+      dangerZones: [],
+      forceX: 0
     };
 
     let activeLevel = null;
@@ -1973,7 +2314,13 @@
       scaleY: 1,
       checkpointX: 80,
       checkpointY: 440,
-      scarfNodes: []
+      scarfNodes: [],
+      crouching: false,
+      groundPlat: null,
+      varJump: false,
+      swingUp: false,
+      silenceTimer: 0,
+      lastHitbox: null
     };
 
     function initWeatherParticles() {
@@ -2027,6 +2374,14 @@
       gameState.floatingTexts = [];
       gameState.projectiles = [];
       gameState.slashEffects = [];
+      gameState.dangerZones = [];
+      gameState.forceX = 0;
+      resetPlayerPosture();
+      player.silenceTimer = 0;
+      player.swingTimer = 0;
+      player.attackCooldown = 0;
+      player.lastHitbox = null;
+      if (LEVEL_HINTS[clamped]) showToast(LEVEL_HINTS[clamped]);
       gameState.mode = 'playing';
 
       hideAllModals();
@@ -2095,21 +2450,20 @@
 
     function requestJump() {
       if (gameState.mode !== 'playing') return;
-      if (input.down && player.onGround) {
-        player.dropThroughTimer = 0.22;
-        player.onGround = false;
-        return;
-      }
+      // S + прыжок на парящей платформе — спрыгнуть вниз; на твёрдой земле это обычный прыжок
+      if (input.down && tryDropThrough()) return;
       player.jumpBufferTimer = 0.12;
       executeBufferedJump();
     }
 
     function executeBufferedJump() {
       if (player.jumpBufferTimer <= 0) return;
+      if (player.crouching && !setPlayerCrouch(false)) return;
       const st = getComputedStats();
 
       if (player.onGround || player.coyoteTimer > 0) {
         player.vy = -610;
+        player.varJump = true;
         player.onGround = false;
         player.coyoteTimer = 0;
         player.jumpBufferTimer = 0;
@@ -2120,6 +2474,7 @@
         spawnParticles(player.x + player.w / 2, player.y + player.h, '#34d399', 7, 110);
       } else if (player.onWall !== 0) {
         player.vy = -560;
+        player.varJump = true;
         player.vx = -player.onWall * 390;
         player.facing = -player.onWall;
         player.jumpsLeft = 1;
@@ -2134,6 +2489,7 @@
           player.stamina = Math.min(st.maxStamina, player.stamina + 10);
         }
         player.vy = -520;
+        player.varJump = true;
         player.jumpsLeft--;
         player.jumpBufferTimer = 0;
         player.scaleX = 1.22;
@@ -2144,58 +2500,91 @@
       }
     }
 
-    function triggerMeleeAttack() {
+    // dir: 'forward' — комбо перед героем, 'up' — отдельный хитбокс над головой (против летающих врагов)
+    function triggerMeleeAttack(dir = 'forward') {
       if (gameState.mode !== 'playing' || player.attackCooldown > 0) return;
       const st = getComputedStats();
-
-      player.comboStep = (player.comboStep % 3) + 1;
-      player.comboResetTimer = 0.75;
-      player.swingDuration = player.comboStep === 3 ? 0.24 : 0.17;
-      player.swingTimer = player.swingDuration;
-      player.attackCooldown = player.comboStep === 3 ? 0.25 : 0.15;
-      // Небольшой боевой выпад вперёд при взмахе мечом
-      if (player.onGround) player.vx += player.facing * (player.comboStep === 3 ? 150 : 85);
-
-      const mult = player.comboStep === 3 ? 1.5 : player.comboStep === 2 ? 1.15 : 1.0;
-      const isCrit = Math.random() < st.critChance;
-      const dmg = Math.round(st.baseDmg * mult * (isCrit ? 1.65 : 1.0));
+      const isUp = dir === 'up';
       const hasTrialSword = Boolean(activeLevel && activeLevel.boss && activeLevel.boss.alive);
-      const range = (player.comboStep === 3 ? 68 : 56) + (hasTrialSword ? 18 : 0);
-      const hitX = player.facing > 0 ? player.x + player.w - 4 : player.x - range + 4;
-      const hitY = player.y - 8;
-      const hitH = player.h + 16;
+      const isCrit = Math.random() < st.critChance;
+      let mult;
+      let knock;
+      let hitX;
+      let hitY;
+      let hitW;
+      let hitH;
 
-      SoundEngine.slash(player.comboStep);
-      gameState.slashEffects.push({
-        x: player.x + player.w / 2 + player.facing * 24,
-        y: player.y + player.h / 2,
-        facing: player.facing,
-        step: player.comboStep,
-        life: 0.14
-      });
+      if (isUp) {
+        player.swingUp = true;
+        player.swingDuration = 0.18;
+        player.swingTimer = player.swingDuration;
+        player.attackCooldown = 0.2;
+        mult = 1.1;
+        knock = 40;
+        const reach = 86 + (hasTrialSword ? 18 : 0);
+        hitW = player.w + 56;
+        hitX = player.x - 28;
+        hitY = player.y - reach;
+        hitH = reach + 12;
+        SoundEngine.slash(2);
+        gameState.slashEffects.push({ x: player.x + player.w / 2, y: player.y - 22, facing: player.facing, step: 2, up: true, life: 0.16 });
+      } else {
+        player.swingUp = false;
+        player.comboStep = (player.comboStep % 3) + 1;
+        player.comboResetTimer = 0.75;
+        player.swingDuration = player.comboStep === 3 ? 0.24 : 0.17;
+        player.swingTimer = player.swingDuration;
+        player.attackCooldown = player.comboStep === 3 ? 0.25 : 0.15;
+        // Небольшой боевой выпад вперёд при взмахе мечом
+        if (player.onGround && !player.crouching) player.vx += player.facing * (player.comboStep === 3 ? 150 : 85);
+
+        mult = player.comboStep === 3 ? 1.5 : player.comboStep === 2 ? 1.15 : 1.0;
+        knock = player.comboStep === 3 ? 220 : 90;
+        hitW = (player.comboStep === 3 ? 68 : 56) + (hasTrialSword ? 18 : 0);
+        hitX = player.facing > 0 ? player.x + player.w - 4 : player.x - hitW + 4;
+        hitY = player.y - 8;
+        hitH = player.h + 16;
+        SoundEngine.slash(player.comboStep);
+        gameState.slashEffects.push({
+          x: player.x + player.w / 2 + player.facing * 24,
+          y: player.y + player.h / 2,
+          facing: player.facing,
+          step: player.comboStep,
+          life: 0.14
+        });
+      }
+
+      const dmg = Math.round(st.baseDmg * mult * (isCrit ? 1.65 : 1.0));
+      player.lastHitbox = { x: hitX, y: hitY, w: hitW, h: hitH, t: 0.2 };
+      let landed = false;
 
       for (const e of activeLevel.enemies) {
         if (!e.alive) continue;
-        if (rectOverlap(hitX, hitY, range, hitH, e.x, e.y, e.w, e.h)) {
-          if (e.frontShield && e.stunTimer <= 0 && Math.sign(player.x - e.x) === e.dir) {
+        if (rectOverlap(hitX, hitY, hitW, hitH, e.x, e.y, e.w, e.h)) {
+          if (!isUp && e.frontShield && e.stunTimer <= 0 && Math.sign(player.x - e.x) === e.dir) {
             SoundEngine.parry();
             addFloatingText(e.x + e.w / 2, e.y - 10, 'ЩИТ! (Обойди рывком / Заряд E)', '#94a3b8');
             player.vx = -player.facing * 240;
             continue;
           }
-          applyDamageToEnemy(e, dmg, isCrit, player.comboStep === 3 ? 220 : 90);
+          // Удар вверх создан против летающих: по ним он бьёт сильнее
+          applyDamageToEnemy(e, isUp && e.flying ? Math.round(dmg * 1.25) : dmg, isCrit, knock);
           player.focus = Math.min(4, player.focus + 1);
+          landed = true;
         }
       }
 
       if (activeLevel.boss && activeLevel.boss.alive) {
         const b = activeLevel.boss;
-        if (rectOverlap(hitX, hitY, range, hitH, b.x, b.y, b.w, b.h)) {
+        if (rectOverlap(hitX, hitY, hitW, hitH, b.x, b.y, b.w, b.h)) {
           hitstopTimer = 0.045;
           applyDamageToBoss(b, Math.round(dmg * 1.25), isCrit, 'melee');
           player.focus = Math.min(4, player.focus + 1);
+          landed = true;
         }
       }
+      // Попадание ударом вверх в воздухе слегка подбрасывает героя — можно жонглировать летунами
+      if (isUp && landed && !player.onGround) player.vy = Math.min(player.vy, -230);
       updateHudCounters();
     }
 
@@ -2222,6 +2611,7 @@
 
     function triggerGrapple() {
       if (gameState.mode !== 'playing' || player.grappleCooldown > 0 || !activeLevel) return;
+      if (isSilenced()) return;
       if (player.stamina < 15) return;
 
       const px = player.x + player.w / 2;
@@ -2258,6 +2648,7 @@
 
     function triggerBlaster() {
       if (gameState.mode !== 'playing') return;
+      if (isSilenced()) return;
       if (player.focus <= 0) {
         addFloatingText(player.x, player.y - 14, 'Нужен Фокус (атакуй мечом!)', '#c084fc');
         return;
@@ -2284,6 +2675,7 @@
 
     function triggerShockwave() {
       if (gameState.mode !== 'playing' || player.shockwaveCooldown > 0) return;
+      if (isSilenced()) return;
       if (player.stamina < 35) {
         addFloatingText(player.x, player.y - 14, 'Нужно 35 стамины!', '#38bdf8');
         return;
@@ -2341,6 +2733,7 @@
 
     function triggerTimeSlow() {
       if (gameState.mode !== 'playing' || gameState.timeSlowCooldown > 0) return;
+      if (isSilenced()) return;
       if (player.stamina < 40) {
         addFloatingText(player.x, player.y - 14, 'Нужно 40 стамины!', '#818cf8');
         return;
@@ -2356,23 +2749,33 @@
     function applyDamageToEnemy(e, dmg, isCrit, knockback) {
       e.hp -= dmg;
       SoundEngine.swordHit();
-      e.vx = player.facing * knockback;
+      // Отбрасывание и срыв замаха: обычных врагов удар прерывает, бронированных и элиту — нет
+      if (e.jumpT < 0 && e.diveT < 0) {
+        e.x = Math.max(e.minX, Math.min(e.maxX, e.x + player.facing * knockback * 0.14));
+      }
+      if (e.windup > 0 && !e.armoredBack && !e.eliteAura) {
+        e.windup = 0;
+        e.pendingAction = null;
+        e.actionTimer = Math.max(e.actionTimer, 0.5);
+      }
       spawnParticles(e.x + e.w / 2, e.y + e.h / 2, isCrit ? '#fde047' : e.color, 10, 160);
       addFloatingText(e.x + e.w / 2, e.y - 8, `${isCrit ? 'КРИТ ' : ''}-${dmg}`, isCrit ? '#fde047' : '#f8fafc');
 
       if (e.hp <= 0) {
         e.alive = false;
-        gameState.score += 100;
-        saveData.xp += 25;
-        checkLevelUp();
+        gameState.score += e.summoned ? 30 : 100;
 
         if (saveData.equippedRelics.includes('void_blade') && player.hp > 1) {
           player.hp = Math.max(1, player.hp - 5);
         }
+        // Призванные боссом прислужники не дают опыта и монет, иначе их можно бесконечно фармить
+        if (e.summoned) return;
 
+        saveData.xp += 25;
+        checkLevelUp();
         activeLevel.coins.push({
           x: e.x + e.w / 2,
-          y: e.baseY + e.h - 18,
+          y: e.groundY - 18,
           r: 15,
           secret: false,
           collected: false
@@ -2382,6 +2785,11 @@
 
     function applyDamageToBoss(b, rawDmg, isCrit, source) {
       if (!b.alive) return;
+      if (b.state === 'dormant') bossWake(b);
+      if (b.invuln > 0) {
+        addFloatingText(b.x + b.w / 2, b.y - 14, 'НЕУЯЗВИМ', '#94a3b8');
+        return;
+      }
       const cappedDmg = Math.min(rawDmg, Math.ceil(b.maxHp * 0.08));
       b.hp = Math.max(0, b.hp - cappedDmg);
       SoundEngine.swordHit();
@@ -2392,12 +2800,16 @@
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, b.color, 14, 210);
       addFloatingText(b.x + b.w / 2, b.y - 14, `${isCrit ? '⚡' : ''}-${cappedDmg}`, isCrit ? '#fde047' : '#fb7185');
 
-      if (b.greedyHits >= 4) {
+      // Наказание за жадность: ранние боссы терпят больше ударов подряд. Контратака не прерывает чужую атаку.
+      const greedyLimit = b.tier <= 2 ? 6 : b.tier <= 5 ? 5 : 4;
+      if (b.greedyHits >= greedyLimit) {
         b.greedyHits = 0;
-        b.state = 'telegraph';
-        b.stateTimer = 0.38;
-        b.attackType = 'counter_wave';
-        b.telegraphLabel = '⚠️ КОНТРАТАКА АРХИМАГА (ПАРИРУЙ F ИЛИ РЫВОК)!';
+        if (b.state === 'recover' || b.state === 'chase') {
+          b.state = 'telegraph';
+          b.attackType = 'counter_wave';
+          b.stateTimer = Math.max(0.36, 0.62 - b.tier * 0.025);
+          b.telegraphLabel = BOSS_ATTACK_LABELS.counter_wave;
+        }
       }
 
       const hpRatio = b.hp / b.maxHp;
@@ -2405,14 +2817,9 @@
         ? (hpRatio <= 0.2 ? 5 : hpRatio <= 0.4 ? 4 : hpRatio <= 0.6 ? 3 : hpRatio <= 0.8 ? 2 : 1)
         : (hpRatio <= 0.33 ? 3 : hpRatio <= 0.66 ? 2 : 1);
 
-      if (newPhase > b.phase) {
-        b.phase = newPhase;
-        gameState.shakeTimer = 0.30;
-        showToast(`🔥 ${b.nameRu}: ФАЗА ${b.phase}/${b.phases}!`);
-      }
-
       if (b.hp <= 0) {
         b.alive = false;
+        bossClearField(true);
         activeLevel.portal.open = true;
         gameState.score += 1000;
         saveData.coins += 45;
@@ -2423,6 +2830,11 @@
         SoundEngine.win();
         showToast(`🏆 ${b.nameRu} повержен! ${b.unlockMsg}`);
         document.getElementById('bossHudBar').classList.add('hidden');
+      } else if (newPhase > b.phase) {
+        b.phase = newPhase;
+        gameState.shakeTimer = 0.30;
+        showToast(`🔥 ${b.nameRu}: ФАЗА ${b.phase}/${b.phases}!`);
+        bossOnPhaseChange(b);
       }
     }
 
@@ -2485,11 +2897,13 @@
         onGameOver();
       } else {
         player.vy = -320;
+        player.varJump = false;
         player.vx = -player.facing * 200;
       }
     }
 
     function respawnAtGroundedCheckpoint() {
+      resetPlayerPosture();
       player.x = player.checkpointX;
       player.y = player.checkpointY;
       player.vx = 0;
@@ -2498,6 +2912,502 @@
       damagePlayer(20, false);
     }
 
+    // =========================================================================
+    // 7.1 ПОЗА ГЕРОЯ, ИИ ВРАГОВ И БОССЫ
+    // =========================================================================
+    const PLAYER_STAND_H = 44;
+    const PLAYER_CROUCH_H = 28;
+
+    function resetPlayerPosture() {
+      player.crouching = false;
+      player.h = PLAYER_STAND_H;
+      player.groundPlat = null;
+    }
+
+    // Присед сжимает хитбокс сверху, ноги остаются на платформе. Возвращает false, если встать мешает потолок.
+    function setPlayerCrouch(on) {
+      if (on === player.crouching) return true;
+      const delta = PLAYER_STAND_H - PLAYER_CROUCH_H;
+      if (on) {
+        player.y += delta;
+        player.h = PLAYER_CROUCH_H;
+        player.crouching = true;
+        return true;
+      }
+      const topY = player.y - delta;
+      if (activeLevel) {
+        for (const p of activeLevel.platforms) {
+          if (!p.active || p.type === 'oneway') continue;
+          if (rectOverlap(player.x, topY, player.w, PLAYER_STAND_H, p.x, p.y, p.w, p.h)) return false;
+        }
+      }
+      player.y = topY;
+      player.h = PLAYER_STAND_H;
+      player.crouching = false;
+      return true;
+    }
+
+    // S на парящей (односторонней) платформе — спрыгнуть сквозь неё
+    function tryDropThrough() {
+      if (gameState.mode !== 'playing' || !player.onGround || !player.groundPlat || player.groundPlat.type !== 'oneway') return false;
+      player.dropThroughTimer = 0.22;
+      player.onGround = false;
+      player.groundPlat = null;
+      return true;
+    }
+
+    function isSilenced() {
+      if (player.silenceTimer <= 0) return false;
+      addFloatingText(player.x + player.w / 2, player.y - 14, '🔇 Навыки заглушены!', '#94a3b8');
+      return true;
+    }
+
+    function chooseEnemyAction(e, dist) {
+      if (e.teleports && dist < 360) {
+        e.altAction = !e.altAction;
+        if (e.altAction) return 'teleport';
+      }
+      if (e.pullsPlayer && dist < 290) {
+        e.altAction = !e.altAction;
+        if (e.altAction) return 'pull';
+      }
+      if (e.mortar) return 'lob';
+      if (e.shooter) return 'shoot';
+      if (e.jumper && dist < 300) return 'jump';
+      if (e.flying && dist < 340) return 'dive';
+      return null;
+    }
+
+    // Выполняется после замаха (windup): цель берётся в момент удара, а сам замах виден игроку
+    function performEnemyAction(e) {
+      const act = e.pendingAction;
+      e.pendingAction = null;
+      const ecx = e.x + e.w / 2;
+      const ecy = e.y + e.h / 2;
+      const dx = (player.x + player.w / 2) - ecx;
+      const dy = (player.y + player.h / 2) - ecy;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      const cd = e.cooldownMult;
+      e.dir = dx >= 0 ? 1 : -1;
+
+      if (act === 'shoot') {
+        const drone = e.visual === 'oculus_drone';
+        const sp = (drone ? 470 : 440) * e.shotSpeed;
+        e.actionTimer = (drone ? 1.45 : 1.55) * cd;
+        gameState.projectiles.push({
+          fromPlayer: false,
+          x: ecx,
+          y: ecy,
+          vx: (dx / dist) * sp,
+          vy: (dy / dist) * sp,
+          gravity: 0,
+          r: drone ? 8 : 7,
+          dmg: e.shotDmg + (drone ? 2 : 0),
+          color: drone ? '#ff1e56' : '#ef4444',
+          life: 2.6
+        });
+        spawnParticles(ecx, ecy, '#a855f7', 6, 110);
+      } else if (act === 'lob') {
+        e.actionTimer = 1.7 * cd;
+        gameState.projectiles.push({
+          fromPlayer: false,
+          x: ecx,
+          y: ecy,
+          vx: Math.max(-380, Math.min(380, dx / 1.04)),
+          vy: -270,
+          gravity: 520,
+          r: 8,
+          dmg: e.shotDmg,
+          color: '#f97316',
+          life: 2.4
+        });
+      } else if (act === 'teleport') {
+        e.actionTimer = 2.4 * cd;
+        spawnParticles(ecx, ecy, '#ec4899', 12, 150);
+        e.x = Math.max(e.minX, Math.min(e.maxX, player.x - player.facing * 96));
+        // Пауза после появления: телепорт вплотную не должен бить мгновенно
+        e.stunTimer = 0.35;
+        spawnParticles(e.x + e.w / 2, ecy, '#ec4899', 12, 150);
+      } else if (act === 'pull') {
+        e.actionTimer = 2.0 * cd;
+        player.vx += Math.sign(e.x - player.x) * 380;
+        spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#f97316', 8, 120);
+      } else if (act === 'jump') {
+        e.actionTimer = 1.35 * cd;
+        e.jumpT = 0;
+        e.jumpDur = 0.6;
+        e.jumpH = e.armoredBack ? 64 : 88;
+        e.jumpVX = Math.max(-330, Math.min(330, dx / 0.6));
+        spawnParticles(ecx, e.y + e.h, '#f43f5e', 8, 120);
+      } else if (act === 'dive') {
+        e.actionTimer = 1.9 * cd;
+        e.diveT = 0;
+        e.diveDur = 0.8 + 0.25 * cd;
+        e.diveFromX = e.x;
+        e.diveFromY = e.y;
+        e.diveToX = Math.max(e.minX, Math.min(e.maxX, player.x + player.w / 2 - e.w / 2));
+        e.diveToY = player.y + player.h - e.h;
+      }
+    }
+
+    const BOSS_GROUND_ONLY = ['shock_slam', 'hop_slam', 'dash_charge'];
+    const BOSS_ATTACK_LABELS = {
+      fan_shot: '🔮 ЗАЛП СФЕР — ПАРИРУЙ (F) ИЛИ УКЛОНЯЙСЯ!',
+      counter_wave: '⚠️ КОНТРАТАКА — ПАРИРУЙ (F) ИЛИ РЫВОК!',
+      dash_charge: '⚡ РЫВОК ДЕМОНА — ПЕРЕПРЫГНИ ИЛИ РЫВОК СКВОЗЬ!',
+      shock_slam: '💥 УДАР ПО ЗЕМЛЕ — ПРЫГАЙ (W)!',
+      hop_slam: '🦘 ПРЫЖОК-УДАР — УЙДИ ИЗ КРАСНОЙ ЗОНЫ!',
+      bomb_lob: '💣 БОМБЫ — НЕ СТОЙ НА МЕСТЕ!',
+      eruption: '🔥 СТОЛБЫ ИЗ-ПОД ЗЕМЛИ — УЙДИ С МЕТОК!',
+      rain: '☄️ ДОЖДЬ С НЕБА — ВСТАНЬ МЕЖДУ ЛИНИЯМИ!',
+      summon: '👹 ПРИЗЫВ ДЕМОНОВ-ПРИСЛУЖНИКОВ!',
+      pull: '🌀 ПРИТЯЖЕНИЕ — БЕГИ ОТ БОССА!',
+      gust: '🌬️ ШКВАЛ — ТЕБЯ СДУВАЕТ, ДЕРЖИСЬ!',
+      dive: '🦅 ПИКЕ С НЕБА — УЙДИ ИЗ КРАСНОЙ ЗОНЫ!',
+      spiral: '🌪️ СПИРАЛЬ СФЕР — ДВИГАЙСЯ МЕЖДУ ЛУЧАМИ!',
+      homing: '👁️ САМОНАВОДЯЩИЕСЯ СФЕРЫ — ПАРИРУЙ ИЛИ РЫВОК!',
+      silence_orbs: '🔇 СФЕРЫ ТИШИНЫ — ПОПАДАНИЕ ГЛУШИТ НАВЫКИ!',
+      teleport_strike: '✨ ТЕЛЕПОРТ ЗА СПИНУ — РЫВОК ПРОЧЬ!',
+      beam_high: '➖ ЛУЧ НА УРОВНЕ ГОЛОВЫ — ПРИСЯДЬ (S)!'
+    };
+
+    // Все числа боя с боссом растут от tier (номер босса 1..10) и немного от фазы
+    function bossParams(b) {
+      const t = b.tier;
+      return {
+        dmg: (0.5 + t * 0.14) * (saveData.ngPlus ? 1.15 : 1),
+        telegraph: Math.max(0.42, 1.15 - t * 0.07 - (b.phase - 1) * 0.04),
+        recover: Math.max(0.75, 1.5 - t * 0.07),
+        idle: Math.max(0.5, 1.45 - t * 0.09 - (b.phase - 1) * 0.08),
+        chase: (105 + t * 13) * (1 + (b.phase - 1) * 0.12),
+        shot: 290 + t * 20
+      };
+    }
+
+    function bossMinionCap(b) {
+      return 2 + Math.floor(b.tier / 4);
+    }
+
+    // Зона опасности: сначала видимое предупреждение (warn), затем короткая активная фаза с уроном
+    function spawnDangerZone(zone) {
+      const z = Object.assign({ warn: 0.6, active: 0.3, dmg: 0, color: '#ef4444', kind: 'zone', parry: false, onActivate: null }, zone);
+      z.maxWarn = Math.max(0.01, z.warn);
+      gameState.dangerZones.push(z);
+    }
+
+    function bossShoot(b, x, y, vx, vy, extra) {
+      gameState.projectiles.push(Object.assign({
+        fromPlayer: false, x, y, vx, vy, gravity: 0, r: 9, dmg: 10, color: b.color, life: 3.0
+      }, extra));
+    }
+
+    function bossGroundWaves(b, P) {
+      [-1, 1].forEach((d) => {
+        bossShoot(b, b.x + b.w / 2, b.floorY - 14, d * (360 + b.tier * 14), 0, { r: 12, dmg: Math.round(24 * P.dmg), life: 2.0 });
+      });
+    }
+
+    // Снимает с поля снаряды и зоны босса; при killMinions — ещё и прислужников (после победы)
+    function bossClearField(killMinions) {
+      for (const pr of gameState.projectiles) {
+        if (!pr.fromPlayer) pr.life = 0;
+      }
+      gameState.dangerZones.length = 0;
+      gameState.forceX = 0;
+      if (!killMinions) return;
+      for (const e of activeLevel.enemies) {
+        if (e.alive && e.summoned) {
+          e.alive = false;
+          spawnParticles(e.x + e.w / 2, e.y + e.h / 2, e.color, 10, 150);
+        }
+      }
+    }
+
+    function bossWake(b) {
+      b.state = 'chase';
+      b.stateTimer = 1.4;
+      gameState.shakeTimer = 0.3;
+      b.telegraphLabel = `👹 ${b.nameRu} пробудился!`;
+    }
+
+    // Демоны-прислужники мешают игроку: появляются по бокам от героя с короткой безвредной паузой
+    function bossSummon(b, count) {
+      activeLevel.enemies = activeLevel.enemies.filter((e) => e.alive || !e.summoned);
+      const aliveMinions = activeLevel.enemies.filter((e) => e.alive && e.summoned).length;
+      const n = Math.min(count, bossMinionCap(b) - aliveMinions);
+      const mix = ['grabber', 'hopper', 'oculus_drone', 'teleporter'];
+      const pcx = player.x + player.w / 2;
+      for (let i = 0; i < n; i++) {
+        const typeId = b.minion === 'mix' ? mix[Math.floor(Math.random() * mix.length)] : b.minion;
+        const side = (i % 2 ? 1 : -1) * (Math.random() < 0.5 ? 1 : -1);
+        const minX = b.arenaX + 40;
+        const maxX = b.arenaX + b.arenaW - 80;
+        const e = makeEnemy(typeId, pcx + side * (220 + i * 50), b.floorY, minX, maxX, activeLevel.diff, { summoned: true, delay: 0.6 });
+        if (e.maxHp > 1) {
+          e.hp = Math.max(1, Math.round(e.maxHp * 0.7));
+          e.maxHp = e.hp;
+        }
+        e.stunTimer = 0.7;
+        activeLevel.enemies.push(e);
+        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, b.color, 16, 170);
+      }
+      if (n > 0) addFloatingText(b.x + b.w / 2, b.y - 30, '👹 ПРИСЛУЖНИКИ!', b.color);
+    }
+
+    function bossOnPhaseChange(b) {
+      bossClearField(false);
+      b.state = 'roar';
+      b.stateTimer = 1.1;
+      b.invuln = 1.1;
+      b.vx = 0;
+      b.chained = false;
+      b.landed = false;
+      b.greedyHits = 0;
+      b.telegraphLabel = `🔥 ФАЗА ${b.phase}: демон призывает подмогу!`;
+      bossSummon(b, 1 + (b.tier >= 5 ? 1 : 0));
+      b.summonCd = 6;
+    }
+
+    function bossPickAttack(b) {
+      let pool = [];
+      for (let i = 0; i < Math.min(b.phase, b.kit.length); i++) pool = pool.concat(b.kit[i]);
+      pool = pool.filter((a) => (b.flying ? !BOSS_GROUND_ONLY.includes(a) : a !== 'dive'));
+      const aliveMinions = activeLevel.enemies.filter((e) => e.alive && e.summoned).length;
+      if (b.summonCd > 0 || aliveMinions >= bossMinionCap(b)) pool = pool.filter((a) => a !== 'summon');
+      const fresh = pool.filter((a) => a !== b.lastAttack);
+      const list = fresh.length ? fresh : pool;
+      return list.length ? list[Math.floor(Math.random() * list.length)] : 'fan_shot';
+    }
+
+    function bossBeginTelegraph(b, attack, P) {
+      const pcx = player.x + player.w / 2;
+      const floor = b.floorY;
+      b.state = 'telegraph';
+      b.attackType = attack;
+      b.lastAttack = attack;
+      b.stateTimer = P.telegraph;
+      b.telegraphLabel = BOSS_ATTACK_LABELS[attack] || '';
+      b.dir = pcx >= b.x + b.w / 2 ? 1 : -1;
+
+      if (attack === 'hop_slam' || attack === 'dive') {
+        b.jumpDur = attack === 'dive' ? 0.45 : 0.7;
+        b.jumpToX = Math.max(b.minX, Math.min(b.maxX, pcx - b.w / 2));
+        spawnDangerZone({ x: b.jumpToX - 30, y: floor - 26, w: b.w + 60, h: 26, warn: P.telegraph + b.jumpDur, active: 0.05, kind: 'marker' });
+      } else if (attack === 'eruption') {
+        const n = Math.min(5, 1 + b.phase + (b.tier >= 7 ? 1 : 0));
+        for (let i = 0; i < n; i++) {
+          const off = i === 0 ? 0 : Math.ceil(i / 2) * 120 * (i % 2 ? 1 : -1);
+          spawnDangerZone({ x: pcx + off - 27, y: floor - 170, w: 54, h: 170, warn: P.telegraph + i * 0.12, active: 0.4, dmg: Math.round(24 * P.dmg), color: b.color, kind: 'pillar' });
+        }
+      } else if (attack === 'rain') {
+        const n = 6 + Math.min(4, b.phase + Math.floor(b.tier / 4));
+        const spacing = 110;
+        const startX = pcx - ((n - 1) / 2) * spacing + (Math.random() - 0.5) * spacing;
+        const fallSpeed = 520 + b.tier * 12;
+        for (let i = 0; i < n; i++) {
+          const colX = startX + i * spacing;
+          spawnDangerZone({
+            x: colX - 3, y: floor - 560, w: 6, h: 560, warn: P.telegraph + i * 0.07, active: 0.05, color: b.color, kind: 'line',
+            onActivate: () => bossShoot(b, colX, floor - 560, 0, fallSpeed, { r: 10, dmg: Math.round(20 * P.dmg), life: 560 / fallSpeed + 0.08 })
+          });
+        }
+      } else if (attack === 'teleport_strike') {
+        b.tpX = Math.max(b.minX, Math.min(b.maxX, pcx - player.facing * 96 - b.w / 2));
+        spawnDangerZone({ x: b.tpX, y: floor - b.h, w: b.w, h: b.h, warn: P.telegraph, active: 0.05, color: b.color, kind: 'marker' });
+      } else if (attack === 'beam_high') {
+        // Луч проходит над присевшим героем: стоя — попадание, в приседе (S) — мимо
+        b.stateTimer = P.telegraph + 0.15;
+        spawnDangerZone({ x: b.arenaX - 40, y: floor - 62, w: b.arenaW + 80, h: 32, warn: b.stateTimer, active: 0.35, dmg: Math.round(26 * P.dmg), color: b.color, kind: 'beam' });
+      }
+    }
+
+    function bossExecuteAttack(b, P) {
+      const a = b.attackType;
+      const ox = b.x + b.w / 2;
+      const oy = b.y + b.h * 0.4;
+      const pcx = player.x + player.w / 2;
+      const pcy = player.y + player.h / 2;
+      const groundY = b.floorY - b.h;
+      b.state = 'attack';
+      b.stateTimer = 0.45;
+      b.telegraphLabel = '';
+      b.attackClock = 0;
+      b.dir = pcx >= ox ? 1 : -1;
+
+      if (a === 'fan_shot' || a === 'counter_wave') {
+        const count = Math.min(7, 2 + b.phase + (b.tier >= 6 ? 1 : 0));
+        const base = Math.atan2(pcy - oy, pcx - ox);
+        for (let i = 0; i < count; i++) {
+          const ang = base + (i - (count - 1) / 2) * 0.2;
+          bossShoot(b, ox, oy, Math.cos(ang) * P.shot, Math.sin(ang) * P.shot, { dmg: Math.round(22 * P.dmg) });
+        }
+      } else if (a === 'dash_charge') {
+        b.vx = b.dir * (470 + b.tier * 20);
+        b.stateTimer = 0.65;
+      } else if (a === 'shock_slam') {
+        gameState.shakeTimer = 0.25;
+        bossGroundWaves(b, P);
+      } else if (a === 'hop_slam' || a === 'dive') {
+        b.jumpFromX = b.x;
+        b.jumpFromY = b.y;
+        b.stateTimer = b.jumpDur;
+      } else if (a === 'bomb_lob') {
+        const n = 2 + b.phase;
+        const flight = 1.25;
+        for (let i = 0; i < n; i++) {
+          const tx = pcx + (i - (n - 1) / 2) * 95;
+          const vy = -420;
+          const dy = (b.floorY - 10) - oy;
+          bossShoot(b, ox, oy, (tx - ox) / flight, vy, { gravity: (2 * (dy - vy * flight)) / (flight * flight), r: 10, dmg: Math.round(20 * P.dmg), life: flight + 0.1 });
+        }
+      } else if (a === 'eruption') {
+        b.stateTimer = 0.9;
+      } else if (a === 'rain') {
+        b.stateTimer = 1.1;
+      } else if (a === 'beam_high') {
+        b.stateTimer = 0.5;
+      } else if (a === 'summon') {
+        bossSummon(b, 1 + (b.phase >= 2 ? 1 : 0));
+        b.summonCd = 9;
+      } else if (a === 'pull' || a === 'gust') {
+        b.stateTimer = 1.5;
+      } else if (a === 'spiral') {
+        b.stateTimer = 1.4 + b.phase * 0.15;
+        b.spin = Math.random() * Math.PI * 2;
+      } else if (a === 'homing' || a === 'silence_orbs') {
+        const n = 2 + (b.phase >= 3 ? 1 : 0);
+        const sp = 175 + b.tier * 6;
+        for (let i = 0; i < n; i++) {
+          const ang = -Math.PI / 2 + (i - (n - 1) / 2) * 0.7;
+          bossShoot(b, ox, oy, Math.cos(ang) * sp, Math.sin(ang) * sp, {
+            r: 10, dmg: Math.round(18 * P.dmg), life: 4.2, homing: 2.2, silence: a === 'silence_orbs', color: a === 'silence_orbs' ? '#cbd5e1' : b.color
+          });
+        }
+      } else if (a === 'teleport_strike') {
+        spawnParticles(ox, b.y + b.h / 2, b.color, 18, 200);
+        b.x = b.tpX;
+        b.y = groundY;
+        b.landed = true;
+        b.dir = pcx >= b.x + b.w / 2 ? 1 : -1;
+        spawnParticles(b.x + b.w / 2, b.y + b.h / 2, b.color, 18, 200);
+        spawnDangerZone({
+          x: b.dir > 0 ? b.x + b.w - 10 : b.x - 100, y: b.floorY - 84, w: 110, h: 84,
+          warn: 0.3, active: 0.16, dmg: Math.round(28 * P.dmg), color: b.color, kind: 'slash', parry: true
+        });
+        b.stateTimer = 0.55;
+      }
+    }
+
+    function bossTickAttack(b, P, worldDt) {
+      const a = b.attackType;
+      const groundY = b.floorY - b.h;
+
+      if (a === 'dash_charge') {
+        b.x += b.vx * worldDt;
+      } else if (a === 'hop_slam' || a === 'dive') {
+        const t = Math.max(0, Math.min(1, 1 - b.stateTimer / b.jumpDur));
+        b.x = b.jumpFromX + (b.jumpToX - b.jumpFromX) * t;
+        b.y = a === 'hop_slam'
+          ? groundY - Math.sin(Math.PI * t) * 170
+          : b.jumpFromY + (groundY - b.jumpFromY) * t * t;
+      } else if (a === 'pull' || a === 'gust') {
+        const toward = b.x + b.w / 2 >= player.x + player.w / 2 ? 1 : -1;
+        gameState.forceX = (a === 'pull' ? toward : -toward) * (150 + b.tier * 8);
+        if (Math.random() < 0.5) {
+          spawnParticles(player.x + player.w / 2 - gameState.forceX * 0.3, player.y + Math.random() * player.h, b.color, 1, 40);
+        }
+      } else if (a === 'spiral') {
+        b.attackClock += worldDt;
+        const sp = 200 + b.tier * 8;
+        while (b.attackClock >= 0.12) {
+          b.attackClock -= 0.12;
+          b.spin += 0.42;
+          for (let arm = 0; arm < 2; arm++) {
+            const ang = b.spin + arm * Math.PI;
+            bossShoot(b, b.x + b.w / 2, b.y + b.h * 0.4, Math.cos(ang) * sp, Math.sin(ang) * sp, { r: 7, dmg: Math.round(14 * P.dmg), life: 3.2 });
+          }
+        }
+      }
+      if (b.stateTimer > 0) return;
+
+      b.vx = 0;
+      if (a === 'hop_slam' || a === 'dive') {
+        b.x = b.jumpToX;
+        b.y = groundY;
+        gameState.shakeTimer = 0.25;
+        SoundEngine.shockwave();
+        spawnParticles(b.x + b.w / 2, b.floorY - 6, b.color, 22, 240);
+        if (a === 'hop_slam' || b.tier >= 6) bossGroundWaves(b, P);
+        if (a === 'dive') b.landed = true;
+      }
+      // Притяжение и шквал — помеха, за которой сразу следует удар (со своим полным телеграфом)
+      if ((a === 'pull' || a === 'gust') && !b.chained) {
+        b.chained = true;
+        bossBeginTelegraph(b, b.flying || a === 'gust' ? 'fan_shot' : 'shock_slam', P);
+        return;
+      }
+      b.chained = false;
+      b.state = 'recover';
+      b.stateTimer = P.recover;
+      b.telegraphLabel = b.flying && !b.landed
+        ? '✨ ОКНО УЯЗВИМОСТИ — БЕЙ ВВЕРХ (I / W+J / МЫШЬ ВВЕРХ)!'
+        : '✨ ОКНО УЯЗВИМОСТИ — АТАКУЙ (ЛКМ / J / E)!';
+    }
+
+    function updateBoss(b, worldDt) {
+      const P = bossParams(b);
+      const pcx = player.x + player.w / 2;
+      const groundY = b.floorY - b.h;
+      if (b.hurtTimer > 0) b.hurtTimer = Math.max(0, b.hurtTimer - worldDt);
+      if (b.invuln > 0) b.invuln = Math.max(0, b.invuln - worldDt);
+      if (b.summonCd > 0) b.summonCd -= worldDt;
+      if (b.greedyTimer > 0) {
+        b.greedyTimer -= worldDt;
+        if (b.greedyTimer <= 0) b.greedyHits = 0;
+      }
+      b.hoverPhase += worldDt * 2.2;
+      b.flying = b.phase >= b.flyFromPhase;
+      // Летающий босс парит над ареной: с земли достаётся только ударом вверх, зарядом или в окне уязвимости
+      const restY = b.flying && !b.landed ? groundY - 132 + Math.sin(b.hoverPhase) * 10 : groundY;
+      b.stateTimer -= worldDt;
+
+      if (b.state === 'dormant') {
+        // Босс не атакует, пока герой не вошёл на арену
+        b.y += (restY - b.y) * Math.min(1, worldDt * 4);
+        if (player.x > b.arenaX - 40) bossWake(b);
+        return;
+      }
+
+      if (b.state === 'chase') {
+        const dx = pcx - (b.x + b.w / 2);
+        b.dir = dx >= 0 ? 1 : -1;
+        if (b.flying) {
+          const tx = pcx + Math.sin(b.hoverPhase * 0.55) * 150 - b.w / 2;
+          b.x += Math.max(-P.chase * worldDt, Math.min(P.chase * worldDt, tx - b.x));
+        } else if (Math.abs(dx) > 150) {
+          b.x += b.dir * P.chase * worldDt;
+        }
+        b.y += (restY - b.y) * Math.min(1, worldDt * 6);
+        if (b.stateTimer <= 0) bossBeginTelegraph(b, bossPickAttack(b), P);
+      } else if (b.state === 'telegraph') {
+        const riseY = b.attackType === 'dive' ? groundY - 215 : restY;
+        b.y += (riseY - b.y) * Math.min(1, worldDt * 6);
+        if (b.stateTimer <= 0) bossExecuteAttack(b, P);
+      } else if (b.state === 'attack') {
+        bossTickAttack(b, P, worldDt);
+      } else {
+        // recover / roar: в окне уязвимости летающий босс снижается к герою
+        const lowY = b.state === 'recover' && b.flying && !b.landed ? groundY - 78 : restY;
+        b.y += (lowY - b.y) * Math.min(1, worldDt * 6);
+        if (b.stateTimer <= 0) {
+          b.state = 'chase';
+          b.stateTimer = P.idle;
+          b.telegraphLabel = '';
+          b.landed = false;
+        }
+      }
+      b.x = Math.max(b.minX, Math.min(b.maxX, b.x));
+    }
     // =========================================================================
     // 8. ОБНОВЛЕНИЕ ФИЗИКИ И МИРА
     // =========================================================================
@@ -2548,6 +3458,13 @@
       if (player.grappleCooldown > 0) player.grappleCooldown = Math.max(0, player.grappleCooldown - dt);
       if (player.shockwaveCooldown > 0) player.shockwaveCooldown = Math.max(0, player.shockwaveCooldown - dt);
       if (player.swingTimer > 0) player.swingTimer = Math.max(0, player.swingTimer - dt);
+      if (player.silenceTimer > 0) player.silenceTimer = Math.max(0, player.silenceTimer - dt);
+      if (player.lastHitbox && player.lastHitbox.t > 0) player.lastHitbox.t -= dt;
+      // Удержание атаки повторяет удары само — без системного автоповтора клавиши
+      if (player.attackCooldown <= 0) {
+        const heldDir = heldAttackDir();
+        if (heldDir) triggerMeleeAttack(heldDir);
+      }
       if (player.comboResetTimer > 0) {
         player.comboResetTimer -= dt;
         if (player.comboResetTimer <= 0) player.comboStep = 0;
@@ -2578,6 +3495,7 @@
           player.grappleTimer = 0;
           player.grappleTarget = null;
           player.vy = -380;
+          player.varJump = false;
         }
       } else if (player.dashTimer > 0) {
         player.dashTimer -= dt;
@@ -2594,11 +3512,13 @@
       } else {
         const accel = player.onGround ? 5200 : 3600;
         const wind = activeLevel.biome.windX || 0;
+        // В приседе герой крадётся
+        const maxSpeed = st.moveSpeed * (player.crouching ? 0.45 : 1);
         if (input.left) {
-          player.vx = Math.max(player.vx - accel * dt, -st.moveSpeed + wind * 0.3);
+          player.vx = Math.max(player.vx - accel * dt, -maxSpeed + wind * 0.3);
           player.facing = -1;
         } else if (input.right) {
-          player.vx = Math.min(player.vx + accel * dt, st.moveSpeed + wind * 0.3);
+          player.vx = Math.min(player.vx + accel * dt, maxSpeed + wind * 0.3);
           player.facing = 1;
         } else {
           const fric = player.onGround ? activeLevel.biome.friction : 2400;
@@ -2606,25 +3526,32 @@
           else player.vx -= Math.sign(player.vx) * fric * dt;
         }
 
-        if (!input.jumpHeld && player.vy < -180) player.vy *= 0.55;
+        // Короткий прыжок при отпускании W; батуты, отскоки и подбросы не срезаются
+        if (player.varJump && !input.jumpHeld && player.vy < -180) player.vy *= 0.55;
+        if (player.vy >= 0) player.varJump = false;
 
-        const grav = (player.vy > 0 ? 2025 : 1620) * activeLevel.biome.grav;
+        // S в воздухе — ускоренное падение
+        const fastFall = input.down && !player.onGround && player.vy > -60;
+        const grav = (player.vy > 0 ? 2025 : 1620) * activeLevel.biome.grav * (fastFall ? 1.55 : 1);
         player.vy += grav * dt;
-        if (player.onWall !== 0 && player.vy > 140) player.vy = 140;
-        else if (player.vy > 900) player.vy = 900;
+        const maxFall = fastFall ? 1150 : 900;
+        if (player.onWall !== 0 && !fastFall && player.vy > 140) player.vy = 140;
+        else if (player.vy > maxFall) player.vy = maxFall;
       }
 
       // Ось X
-      player.x += player.vx * dt;
+      // forceX — внешняя сила (притяжение/шквал босса), сдвигает героя поверх его собственной скорости
+      const moveX = (player.vx + gameState.forceX) * dt;
+      player.x += moveX;
       player.onWall = 0;
       for (const p of activeLevel.platforms) {
         if (!p.active || p.type === 'oneway') continue;
         if (rectOverlap(player.x, player.y, player.w, player.h, p.x, p.y, p.w, p.h)) {
-          if (player.vx > 0) {
+          if (moveX > 0) {
             player.x = p.x - player.w;
             player.vx = 0;
             if (!player.onGround && input.right) player.onWall = 1;
-          } else if (player.vx < 0) {
+          } else if (moveX < 0) {
             player.x = p.x + p.w;
             player.vx = 0;
             if (!player.onGround && input.left) player.onWall = -1;
@@ -2637,6 +3564,7 @@
       const wasOnGround = player.onGround;
       player.y += player.vy * dt;
       player.onGround = false;
+      player.groundPlat = null;
 
       for (const p of activeLevel.platforms) {
         if (!p.active) continue;
@@ -2652,6 +3580,7 @@
             }
             player.vy = 0;
             player.onGround = true;
+            player.groundPlat = p;
             player.coyoteTimer = 0.10;
             player.jumpsLeft = 1;
             if (p.destructibleType === 'crumble' && !p.crumbleTimer) {
@@ -2667,6 +3596,10 @@
 
       if (!player.onGround && wasOnGround) player.coyoteTimer = 0.10;
       if (player.onGround && player.jumpBufferTimer > 0) executeBufferedJump();
+
+      // Присед: S на земле. На парящей платформе само нажатие S уже спрыгивает вниз (tryDropThrough).
+      const wantCrouch = input.down && player.onGround && player.dashTimer <= 0 && !player.grappleTarget;
+      if (wantCrouch !== player.crouching) setPlayerCrouch(wantCrouch);
 
       if (player.y > 820) {
         respawnAtGroundedCheckpoint();
@@ -2687,6 +3620,7 @@
         if (jp.bounceAnim > 0) jp.bounceAnim = Math.max(0, jp.bounceAnim - dt * 4);
         if (rectOverlap(player.x, player.y, player.w, player.h, jp.x, jp.y - 6, jp.w, jp.h + 6)) {
           player.vy = jp.vy;
+          player.varJump = false;
           player.onGround = false;
           player.jumpsLeft = 1;
           jp.bounceAnim = 1;
@@ -2696,8 +3630,28 @@
       }
 
       for (const hz of activeLevel.hazards) {
-        if (rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, hz.x, hz.y, hz.w, hz.h)) {
-          damagePlayer(18, false);
+        let hx = hz.x;
+        let hy = hz.y;
+        let hw = hz.w;
+        let hh = hz.h;
+        let live = true;
+        if (hz.type === 'saw') {
+          hz.x += hz.dir * hz.speed * worldDt;
+          if (hz.x > hz.maxX) { hz.x = hz.maxX; hz.dir = -1; }
+          if (hz.x < hz.minX) { hz.x = hz.minX; hz.dir = 1; }
+          hx = hz.x + 4;
+          hy += 4;
+          hw -= 8;
+          hh -= 4;
+        } else if (hz.type === 'flame') {
+          // Цикл гейзера: 1.3 с пауза → 0.8 с предупреждение → 0.9 с пламя
+          hz.clock = (hz.clock + worldDt) % 3;
+          hz.warn = hz.clock >= 1.3 && hz.clock < 2.1;
+          hz.lit = hz.clock >= 2.1;
+          live = hz.lit;
+        }
+        if (live && rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, hx, hy, hw, hh)) {
+          damagePlayer(hz.dmg || 18, false);
         }
       }
 
@@ -2763,82 +3717,80 @@
         const dxToPlayer = (player.x + player.w / 2) - (e.x + e.w / 2);
         const dyToPlayer = (player.y + player.h / 2) - (e.y + e.h / 2);
         const distToPlayer = Math.hypot(dxToPlayer, dyToPlayer);
-        const isAggro = distToPlayer < 480;
+        const isAggro = distToPlayer < e.aggroRange;
+        // Честность: враг не начинает атаку, пока его не видно на экране
+        const onScreen = Math.abs(dxToPlayer) < canvas.width * 0.55 + 60;
         e.aggro = isAggro;
 
-        // Агрессивное преследование героя при входе в радиус 480 px!
-        if (isAggro && Math.abs(dxToPlayer) > 14) {
-          e.dir = dxToPlayer >= 0 ? 1 : -1;
-        }
-        const aggroSpeedMult = isAggro ? 1.48 : 1.0;
-        e.x += e.dir * e.speed * aggroSpeedMult * worldDt;
-        if (e.x > e.maxX) { e.x = e.maxX; e.dir = -1; }
-        if (e.x < e.minX) { e.x = e.minX; e.dir = 1; }
+        if (e.jumpT >= 0) {
+          // Настоящий прыжок по дуге в сторону героя
+          e.jumpT += worldDt / e.jumpDur;
+          e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.jumpVX * worldDt));
+          e.y = e.baseY - Math.sin(Math.PI * Math.min(1, e.jumpT)) * e.jumpH;
+          if (e.jumpT >= 1) {
+            e.jumpT = -1;
+            e.y = e.baseY;
+            spawnParticles(e.x + e.w / 2, e.y + e.h, '#f43f5e', 8, 120);
+            if (e.armoredBack) {
+              // Крушитель при приземлении пускает короткие волны по земле
+              [-1, 1].forEach((d) => {
+                gameState.projectiles.push({
+                  fromPlayer: false, x: e.x + e.w / 2, y: e.y + e.h - 12, vx: d * 260, vy: 0, gravity: 0,
+                  r: 9, dmg: e.shotDmg, color: '#f97316', life: 0.55
+                });
+              });
+            }
+          }
+        } else if (e.diveT >= 0) {
+          // Пике летуна: вниз к герою и обратно на высоту
+          e.diveT += worldDt / e.diveDur;
+          const swoop = Math.sin(Math.PI * Math.min(1, e.diveT));
+          e.x = e.diveFromX + (e.diveToX - e.diveFromX) * swoop;
+          e.y = e.diveFromY + (e.diveToY - e.diveFromY) * swoop;
+          if (e.diveT >= 1) e.diveT = -1;
+        } else if (e.windup <= 0) {
+          if (isAggro && Math.abs(dxToPlayer) > 14) {
+            e.dir = dxToPlayer >= 0 ? 1 : -1;
+          }
+          // Наземные стрелки держат дистанцию, а не идут в лоб
+          const holdsRange = (e.shooter || e.mortar) && !e.flying && isAggro && Math.abs(dxToPlayer) < 230;
+          if (!holdsRange) {
+            e.x += e.dir * e.speed * (isAggro ? 1.4 : 1.0) * worldDt;
+            if (e.x > e.maxX) { e.x = e.maxX; e.dir = -1; }
+            if (e.x < e.minX) { e.x = e.minX; e.dir = 1; }
+          }
 
-        if (e.flying) {
-          e.phase += worldDt * (isAggro ? 5.2 : 3.5);
-          // Летающие мобы и Глаз-Дрон активно смещаются по высоте к герою, мешая прыгать!
-          const targetFlyY = isAggro ? (player.y - 45 + Math.sin(e.phase) * 28) : (e.baseY + Math.sin(e.phase) * 18);
-          e.y += (targetFlyY - e.y) * Math.min(1, worldDt * 3.5);
+          if (e.flying) {
+            e.phase += worldDt * (isAggro ? 4.2 : 3.2);
+            // Летуны держатся над головой героя — вне досягаемости обычного удара, но в зоне удара вверх
+            const targetFlyY = isAggro ? (player.y - 100 + Math.sin(e.phase) * 12) : (e.baseY + Math.sin(e.phase) * 18);
+            e.y += (targetFlyY - e.y) * Math.min(1, worldDt * 3.0);
+          }
         }
 
         // Уникальная механика Орбитального Глаза-Дрона (пульсация фиолетовых клинков вокруг корпуса)
         if (e.visual === 'oculus_drone') {
           e.bladeRadius = 24 + (isAggro ? Math.max(0, Math.sin(e.phase * 1.5) * 28) : 0);
           if (distToPlayer < e.bladeRadius + 22) {
-            damagePlayer(14, true);
+            damagePlayer(Math.max(4, e.contactDmg - 2), true);
           }
         }
 
-        e.actionTimer -= worldDt * (isAggro ? 1.35 : 1.0);
-        if (e.actionTimer <= 0 && isAggro) {
-          e.dir = dxToPlayer >= 0 ? 1 : -1;
-          if (e.visual === 'oculus_drone') {
-            // Прицельный залп Глаза-Дрона по вектору на игрока + рывок!
-            e.actionTimer = 1.45;
-            const aimLen = Math.max(1, distToPlayer);
-            gameState.projectiles.push({
-              fromPlayer: false,
-              x: e.x + e.w / 2,
-              y: e.y + e.h / 2,
-              vx: (dxToPlayer / aimLen) * 470,
-              vy: (dyToPlayer / aimLen) * 470,
-              gravity: 0,
-              r: 8,
-              dmg: 18,
-              color: '#ff1e56',
-              life: 2.6
-            });
-            spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#a855f7', 8, 130);
-          } else if (e.shooter || e.mortar) {
-            e.actionTimer = 1.55;
-            const aimLen = Math.max(1, distToPlayer);
-            gameState.projectiles.push({
-              fromPlayer: false,
-              x: e.x + e.w / 2,
-              y: e.y + e.h / 2,
-              vx: e.mortar ? e.dir * 260 : (dxToPlayer / aimLen) * 440,
-              vy: e.mortar ? -270 : (dyToPlayer / aimLen) * 440,
-              gravity: e.mortar ? 520 : 0,
-              r: 7,
-              dmg: 16,
-              color: '#ef4444',
-              life: 2.5
-            });
-          } else if (e.teleports && distToPlayer < 360) {
-            e.actionTimer = 2.4;
-            e.x = Math.max(e.minX, Math.min(e.maxX, player.x - player.facing * 42));
-            spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ec4899', 12, 150);
-          } else if (e.pullsPlayer && distToPlayer < 290) {
-            e.actionTimer = 2.0;
-            player.vx += Math.sign(e.x - player.x) * 380;
-          } else if (e.jumper && distToPlayer < 280) {
-            // Агрессивный прыжок-выпад рогатого беса на игрока!
-            e.actionTimer = 1.35;
-            e.x = Math.max(e.minX, Math.min(e.maxX, e.x + e.dir * 65));
-            spawnParticles(e.x + e.w / 2, e.y + e.h, '#f43f5e', 8, 120);
-          } else {
-            e.actionTimer = 1.2;
+        if (e.windup > 0) {
+          e.windup -= worldDt;
+          if (e.windup <= 0) performEnemyAction(e);
+        } else if (e.jumpT < 0 && e.diveT < 0) {
+          e.actionTimer -= worldDt;
+          if (e.actionTimer <= 0 && isAggro && onScreen) {
+            const act = chooseEnemyAction(e, distToPlayer);
+            if (act) {
+              // Замах перед каждой атакой: чем выше уровень, тем он короче
+              e.pendingAction = act;
+              e.windup = e.telegraph;
+              e.dir = dxToPlayer >= 0 ? 1 : -1;
+            } else {
+              e.actionTimer = 0.6;
+            }
           }
         }
 
@@ -2846,115 +3798,38 @@
           const isStomp = player.vy > 60 && player.y + player.h - player.vy * dt <= e.y + 18 && !e.armoredBack;
           if (isStomp) {
             player.vy = -490;
+            player.varJump = false;
             player.jumpsLeft = 1;
             applyDamageToEnemy(e, 28, false, 60);
           } else {
-            damagePlayer(16, true);
+            damagePlayer(e.contactDmg, true);
           }
         }
       }
 
-      // Босс (Архимаг в капюшоне с красным кристальным посохом)
+      // Босс
+      gameState.forceX = 0;
       if (activeLevel.boss && activeLevel.boss.alive) {
         const b = activeLevel.boss;
-        if (b.hurtTimer > 0) b.hurtTimer = Math.max(0, b.hurtTimer - worldDt);
-        if (b.greedyTimer > 0) {
-          b.greedyTimer -= worldDt;
-          if (b.greedyTimer <= 0) b.greedyHits = 0;
+        updateBoss(b, worldDt);
+
+        const hudKey = `${b.hp}|${b.phase}|${b.telegraphLabel}`;
+        if (hudKey !== b.hudKey) {
+          b.hudKey = hudKey;
+          document.getElementById('bossHudName').textContent = `${b.nameRu} (${b.hp}/${b.maxHp} HP)`;
+          document.getElementById('bossHudPhase').textContent = `ФАЗА ${b.phase}/${b.phases}`;
+          document.getElementById('bossHudFill').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;
+          document.getElementById('bossTelegraphText').textContent = b.telegraphLabel;
         }
 
-        const speedMult = 1 + (b.phase - 1) * 0.22;
-        b.stateTimer -= worldDt;
-
-        if (b.state === 'patrol') {
-          b.x += b.dir * 165 * speedMult * worldDt;
-          if (b.x > b.maxX) { b.x = b.maxX; b.dir = -1; }
-          if (b.x < b.minX) { b.x = b.minX; b.dir = 1; }
-          if (b.stateTimer <= 0) {
-            b.state = 'telegraph';
-            b.stateTimer = Math.max(0.42, 0.72 - b.phase * 0.06);
-            const attacks = ['fan_shot', 'dash_charge', 'shock_slam'];
-            b.attackType = attacks[(b.phase + Math.floor(gameState.levelTime)) % attacks.length];
-            b.dir = (player.x >= b.x) ? 1 : -1;
-            b.telegraphLabel = b.attackType === 'dash_charge'
-              ? '⚡ ТЕЛЕГРАФ: РЫВОК АРХИМАГА (РЫВОК ИЛИ ПРЫЖОК)!'
-              : b.attackType === 'shock_slam'
-              ? '💥 ТЕЛЕГРАФ: УДАР ПОСОХОМ ПО ЗЕМЛЕ (ПРЫГАЙ W)!'
-              : '🔮 ТЕЛЕГРАФ: ЗАЛП КРОВАВЫХ СФЕР (ПАРИРУЙ F)!';
-          }
-        } else if (b.state === 'telegraph') {
-          if (b.stateTimer <= 0) {
-            b.state = 'attack';
-            b.stateTimer = 0.65;
-            b.telegraphLabel = '';
-
-            if (b.attackType === 'fan_shot' || b.attackType === 'counter_wave') {
-              const count = 2 + b.phase;
-              for (let i = 0; i < count; i++) {
-                const ang = (b.dir > 0 ? 0 : Math.PI) + (i - (count - 1) / 2) * 0.22;
-                gameState.projectiles.push({
-                  fromPlayer: false,
-                  x: b.x + b.w / 2,
-                  y: b.y + b.h * 0.4,
-                  vx: Math.cos(ang) * 440,
-                  vy: Math.sin(ang) * 440,
-                  gravity: 0,
-                  r: 9,
-                  dmg: 22,
-                  color: '#ef4444',
-                  life: 3.0
-                });
-              }
-            } else if (b.attackType === 'dash_charge') {
-              b.vx = b.dir * 620 * speedMult;
-            } else if (b.attackType === 'shock_slam') {
-              gameState.shakeTimer = 0.25;
-              [-1, 1].forEach((d) => {
-                gameState.projectiles.push({
-                  fromPlayer: false,
-                  x: b.x + b.w / 2,
-                  y: b.floorY - 14,
-                  vx: d * 480,
-                  vy: 0,
-                  gravity: 0,
-                  r: 12,
-                  dmg: 24,
-                  color: '#ef4444',
-                  life: 2.2
-                });
-              });
-            }
-          }
-        } else if (b.state === 'attack') {
-          if (b.attackType === 'dash_charge') {
-            b.x = Math.max(b.minX, Math.min(b.maxX, b.x + b.vx * worldDt));
-          }
-          if (b.stateTimer <= 0) {
-            b.vx = 0;
-            b.state = 'recover';
-            b.stateTimer = 1.05;
-            b.telegraphLabel = '✨ ОКНО УЯЗВИМОСТИ — АТАКУЙ (ЛКМ / J / E)!';
-          }
-        } else if (b.state === 'recover') {
-          if (b.stateTimer <= 0) {
-            b.state = 'patrol';
-            b.stateTimer = 1.3;
-            b.telegraphLabel = '';
-          }
-        }
-
-        document.getElementById('bossHudName').textContent = `${b.nameRu} (${b.hp}/${b.maxHp} HP)`;
-        document.getElementById('bossHudPhase').textContent = `ФАЗА ${b.phase}/${b.phases}`;
-        document.getElementById('bossHudFill').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;
-        document.getElementById('bossTelegraphText').textContent = b.telegraphLabel;
-
-        if (rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, b.x, b.y, b.w, b.h)) {
+        if (b.state !== 'dormant' && rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, b.x, b.y, b.w, b.h)) {
           const isStomp = player.vy > 80 && player.y + player.h - player.vy * dt <= b.y + 24;
           if (isStomp) {
             player.vy = -540;
+            player.varJump = false;
             applyDamageToBoss(b, Math.round(st.baseDmg * 1.2), false, 'stomp');
           } else {
-            damagePlayer(22, true);
+            damagePlayer(Math.round(22 * bossParams(b).dmg), true);
           }
         }
       }
@@ -2963,6 +3838,17 @@
       for (let i = gameState.projectiles.length - 1; i >= 0; i--) {
         const pr = gameState.projectiles[i];
         const stepDt = pr.fromPlayer ? dt : worldDt;
+        if (pr.homing && !pr.fromPlayer) {
+          // Самонаведение с ограниченной скоростью поворота — от сферы можно уйти рывком
+          const sp = Math.hypot(pr.vx, pr.vy) || 1;
+          let cur = Math.atan2(pr.vy, pr.vx);
+          let turn = Math.atan2(pCenterY - pr.y, pCenterX - pr.x) - cur;
+          while (turn > Math.PI) turn -= Math.PI * 2;
+          while (turn < -Math.PI) turn += Math.PI * 2;
+          cur += Math.max(-pr.homing * stepDt, Math.min(pr.homing * stepDt, turn));
+          pr.vx = Math.cos(cur) * sp;
+          pr.vy = Math.sin(cur) * sp;
+        }
         pr.x += pr.vx * stepDt;
         pr.y += pr.vy * stepDt;
         if (pr.gravity) pr.vy += pr.gravity * stepDt;
@@ -2999,11 +3885,31 @@
               pr.color = '#34d399';
               damagePlayer(0, true);
             } else {
+              const vulnerable = player.invulnTimer <= 0 && player.dashTimer <= 0;
               gameState.projectiles.splice(i, 1);
               damagePlayer(pr.dmg, false);
+              if (pr.silence && vulnerable && gameState.mode === 'playing') {
+                player.silenceTimer = 3.5;
+                addFloatingText(player.x + player.w / 2, player.y - 30, '🔇 ТИШИНА: навыки заглушены на 3.5с', '#cbd5e1');
+              }
             }
           }
         }
+      }
+
+      // Зоны опасности боссов: предупреждение → короткая активная фаза
+      for (let i = gameState.dangerZones.length - 1; i >= 0; i--) {
+        const z = gameState.dangerZones[i];
+        if (z.warn > 0) {
+          z.warn -= worldDt;
+          if (z.warn <= 0 && z.onActivate) z.onActivate(z);
+          continue;
+        }
+        z.active -= worldDt;
+        if (z.dmg > 0 && rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, z.x, z.y, z.w, z.h)) {
+          damagePlayer(z.dmg, z.parry);
+        }
+        if (z.active <= 0) gameState.dangerZones.splice(i, 1);
       }
 
       const portal = activeLevel.portal;
@@ -3127,6 +4033,130 @@
       ctx.restore();
     }
 
+    // Босс: общий силуэт Архимага + аура, рога и крылья в фирменном цвете демона, чтобы боссы различались
+    function drawBossCharacter(ctx, b, tSec) {
+      const cx = b.x + b.w / 2;
+      const cy = b.y + b.h / 2;
+      const pulse = 0.5 + 0.5 * Math.sin(tSec * 8);
+
+      ctx.save();
+      const aura = ctx.createRadialGradient(cx, cy, 6, cx, cy, b.w * 1.5);
+      aura.addColorStop(0, b.color);
+      aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.globalAlpha = b.state === 'dormant' ? 0.18 : 0.38;
+      ctx.fillStyle = aura;
+      ctx.beginPath();
+      ctx.arc(cx, cy, b.w * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      if (b.flying) {
+        // Крылья летающего босса
+        const flap = Math.sin(tSec * 6) * 10;
+        ctx.fillStyle = b.color;
+        ctx.globalAlpha = 0.7;
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          ctx.moveTo(cx + side * 10, cy - 10);
+          ctx.quadraticCurveTo(cx + side * (b.w * 0.9), cy - 46 - flap, cx + side * (b.w * 1.25), cy - 8 + flap);
+          ctx.quadraticCurveTo(cx + side * (b.w * 0.8), cy + 2, cx + side * 10, cy + 12);
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      drawWarlockCharacter(ctx, b.x, b.y, b.w, b.h, b.dir, tSec, b.hurtTimer > 0);
+
+      // Рога в цвете босса
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      [-1, 1].forEach((side) => {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * 9, b.y + 8);
+        ctx.quadraticCurveTo(cx + side * 22, b.y - 4, cx + side * 18, b.y - 20);
+        ctx.stroke();
+      });
+
+      if (b.state === 'telegraph') {
+        // Замах: пульсирующее кольцо и восклицательный знак над головой
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.5 + 0.45 * pulse})`;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, b.w * 0.95 + pulse * 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#fde047';
+        ctx.font = '900 28px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', cx, b.y - 30);
+      } else if (b.state === 'recover') {
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.75)';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, b.w * 0.95, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (b.invuln > 0) {
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.85)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, b.w * 1.1, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Зоны опасности: полупрозрачное предупреждение с заполнением по таймеру, затем яркая активная фаза
+    function drawDangerZones(ctx, tSec) {
+      for (const z of gameState.dangerZones) {
+        const warning = z.warn > 0;
+        const prog = warning ? 1 - z.warn / z.maxWarn : 1;
+        const pulse = 0.5 + 0.5 * Math.sin(tSec * 10);
+        ctx.save();
+        if (z.kind === 'line') {
+          ctx.strokeStyle = z.color;
+          ctx.globalAlpha = 0.25 + 0.45 * prog;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.moveTo(z.x + z.w / 2, z.y);
+          ctx.lineTo(z.x + z.w / 2, z.y + z.h);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 0.5 + 0.4 * pulse;
+          ctx.fillStyle = z.color;
+          ctx.fillRect(z.x + z.w / 2 - 14, z.y + z.h - 5, 28, 5);
+        } else if (warning) {
+          ctx.fillStyle = z.color;
+          ctx.globalAlpha = 0.10 + 0.08 * pulse;
+          ctx.fillRect(z.x, z.y, z.w, z.h);
+          // Заполнение показывает, сколько осталось до удара
+          ctx.globalAlpha = 0.30;
+          if (z.kind === 'beam') ctx.fillRect(z.x, z.y, z.w * prog, z.h);
+          else ctx.fillRect(z.x, z.y + z.h * (1 - prog), z.w, z.h * prog);
+          ctx.globalAlpha = 0.9;
+          ctx.strokeStyle = '#fca5a5';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([8, 6]);
+          ctx.strokeRect(z.x, z.y, z.w, z.h);
+          ctx.setLineDash([]);
+        } else if (z.dmg > 0) {
+          ctx.fillStyle = z.color;
+          ctx.shadowColor = z.color;
+          ctx.shadowBlur = 18;
+          ctx.globalAlpha = 0.85;
+          ctx.fillRect(z.x, z.y, z.w, z.h);
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = '#ffffff';
+          if (z.kind === 'beam') ctx.fillRect(z.x, z.y + z.h * 0.35, z.w, z.h * 0.3);
+          else ctx.fillRect(z.x + z.w * 0.35, z.y, z.w * 0.3, z.h);
+        }
+        ctx.restore();
+      }
+    }
     function drawEnemyByVisual(ctx, e, tSec) {
       const cx = e.x + e.w / 2;
       const cy = e.y + e.h / 2;
@@ -3775,6 +4805,62 @@
           ctx.arc(gx - 3, gy - 2, 2.2, 0, Math.PI * 2);
           ctx.arc(gx + 3, gy - 2, 2.2, 0, Math.PI * 2);
           ctx.fill();
+        } else if (hz.type === 'saw') {
+          // Дисковая пила, катающаяся по платформе
+          const sx = hz.x + hz.w / 2;
+          const sy = hz.y + hz.h / 2;
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(tSec * 7 * hz.dir);
+          ctx.fillStyle = '#94a3b8';
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < 16; i++) {
+            const rr = i % 2 === 0 ? hz.w / 2 + 3 : hz.w / 2 - 4;
+            const ang = (i * Math.PI) / 8;
+            if (i === 0) ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+            else ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(0, 0, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (hz.type === 'flame') {
+          // Огненный гейзер: сопло, искры-предупреждение и столб пламени
+          const fx = hz.x + hz.w / 2;
+          const baseY = hz.y + hz.h;
+          ctx.fillStyle = '#44403c';
+          ctx.strokeStyle = hz.warn || hz.lit ? '#f97316' : '#78716c';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(hz.x - 2, baseY - 8, hz.w + 4, 8, 3);
+          ctx.fill();
+          ctx.stroke();
+          if (hz.warn) {
+            ctx.fillStyle = `rgba(251, 146, 60, ${0.45 + 0.4 * Math.sin(tSec * 12)})`;
+            ctx.fillRect(hz.x + 2, hz.y, hz.w - 4, hz.h - 8);
+            ctx.fillStyle = '#fde047';
+            ctx.font = '900 16px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('!', fx, hz.y - 6);
+          } else if (hz.lit) {
+            const flameGrad = ctx.createLinearGradient(0, hz.y, 0, baseY);
+            flameGrad.addColorStop(0, 'rgba(253, 224, 71, 0.15)');
+            flameGrad.addColorStop(0.4, 'rgba(249, 115, 22, 0.9)');
+            flameGrad.addColorStop(1, 'rgba(239, 68, 68, 0.95)');
+            ctx.fillStyle = flameGrad;
+            ctx.beginPath();
+            ctx.moveTo(hz.x, baseY - 8);
+            ctx.quadraticCurveTo(hz.x - 6 + Math.sin(tSec * 9) * 4, hz.y + hz.h * 0.4, fx, hz.y + Math.sin(tSec * 13) * 5);
+            ctx.quadraticCurveTo(hz.x + hz.w + 6 + Math.cos(tSec * 9) * 4, hz.y + hz.h * 0.4, hz.x + hz.w, baseY - 8);
+            ctx.closePath();
+            ctx.fill();
+          }
         } else {
           ctx.fillStyle = '#f43f5e';
           const cnt = Math.floor(hz.w / 14);
@@ -3914,10 +5000,25 @@
       ctx.stroke();
       ctx.restore();
 
+      drawDangerZones(ctx, tSec);
+
       // 11. Враги
       for (const e of activeLevel.enemies) {
         if (!e.alive || e.x < viewLeft || e.x > viewRight) continue;
         drawEnemyByVisual(ctx, e, tSec);
+        if (e.windup > 0) {
+          // Замах врага: жёлтое кольцо и «!» — сигнал уклоняться или бить первым
+          const pulse = 0.5 + 0.5 * Math.sin(tSec * 9);
+          ctx.strokeStyle = `rgba(250, 204, 21, ${0.55 + 0.4 * pulse})`;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(e.x + e.w / 2, e.y + e.h / 2, Math.max(e.w, e.h) * 0.75 + pulse * 4, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#fde047';
+          ctx.font = '900 20px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('!', e.x + e.w / 2, e.y - 16);
+        }
 
         if (e.hp < e.maxHp) {
           ctx.fillStyle = '#0f172a';
@@ -3930,7 +5031,7 @@
       // 12. Босс (Архимаг в капюшоне с кристальным посохом)
       if (activeLevel.boss && activeLevel.boss.alive) {
         const b = activeLevel.boss;
-        drawWarlockCharacter(ctx, b.x, b.y, b.w, b.h, b.dir, tSec, b.hurtTimer > 0);
+        drawBossCharacter(ctx, b, tSec);
       }
 
       // 13. Трос Крюка-кошки
@@ -3994,7 +5095,10 @@
       let swordAngle = -0.55 + Math.sin(tSec * 3) * 0.06;
       if (player.swingTimer > 0) {
         const prog = 1 - (player.swingTimer / Math.max(0.01, player.swingDuration));
-        if (player.comboStep === 1) {
+        if (player.swingUp) {
+          // Удар вверх: дуга над головой от спины к лицу
+          swordAngle = -2.75 + prog * 2.4;
+        } else if (player.comboStep === 1) {
           // Удар 1: мощный рубящий взмах сверху вниз (-1.6 рад -> +1.1 рад)
           swordAngle = -1.65 + prog * 2.75;
         } else if (player.comboStep === 2) {
@@ -4005,10 +5109,12 @@
           swordAngle = -2.1 + prog * 4.8;
         }
         // Веерный огненно-золотой шлейф за клинком во время взмаха
-        ctx.fillStyle = player.comboStep === 3 ? 'rgba(244, 63, 94, 0.38)' : 'rgba(253, 224, 71, 0.34)';
+        ctx.fillStyle = player.swingUp
+          ? 'rgba(56, 189, 248, 0.42)'
+          : player.comboStep === 3 ? 'rgba(244, 63, 94, 0.38)' : 'rgba(253, 224, 71, 0.34)';
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.arc(0, 0, 46, swordAngle - 0.85, swordAngle);
+        ctx.arc(0, 0, player.swingUp ? 54 : 46, swordAngle - 0.85, swordAngle);
         ctx.closePath();
         ctx.fill();
       }
@@ -4089,6 +5195,11 @@
         ctx.strokeRect(player.x, player.y, player.w, player.h);
         ctx.strokeStyle = '#3b82f6';
         ctx.strokeRect(player.x + 4, player.y + 4, player.w - 8, player.h - 8);
+        if (player.lastHitbox && player.lastHitbox.t > 0) {
+          // Хитбокс последнего удара мечом (обычного или вверх)
+          ctx.strokeStyle = '#f43f5e';
+          ctx.strokeRect(player.lastHitbox.x, player.lastHitbox.y, player.lastHitbox.w, player.lastHitbox.h);
+        }
       }
 
       // АУРА ДИАПАЗОНА НАВЫКА «ВОЛНА ЭХА» (Q) — показывает точный радиус срабатывания 155 px вокруг героя!
@@ -4165,10 +5276,11 @@
 
       // Росчерки меча
       for (const sl of gameState.slashEffects) {
-        ctx.strokeStyle = sl.step === 3 ? '#fde047' : '#38bdf8';
-        ctx.lineWidth = sl.step === 3 ? 6 : 4;
+        ctx.strokeStyle = sl.up ? '#7dd3fc' : sl.step === 3 ? '#fde047' : '#38bdf8';
+        ctx.lineWidth = sl.up ? 5 : sl.step === 3 ? 6 : 4;
         ctx.beginPath();
-        ctx.arc(sl.x, sl.y, 34, sl.facing > 0 ? -0.9 : 2.2, sl.facing > 0 ? 0.9 : 4.0);
+        if (sl.up) ctx.arc(sl.x, sl.y, 44, Math.PI + 0.45, Math.PI * 2 - 0.45);
+        else ctx.arc(sl.x, sl.y, 34, sl.facing > 0 ? -0.9 : 2.2, sl.facing > 0 ? 0.9 : 4.0);
         ctx.stroke();
       }
 
@@ -4524,92 +5636,150 @@
     }
 
     function setupControlsAndButtons() {
-      function clearAllInputs() {
-        input.left = false;
-        input.right = false;
-        input.down = false;
-        input.jumpHeld = false;
-        input.blockHeld = false;
-      }
-
       window.addEventListener('blur', clearAllInputs);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) clearAllInputs();
+      });
 
-      // ГАРАНТИРОВАННАЯ ПОДДЕРЖКА WASD ЧЕРЕЗ KeyboardEvent.code (РАБОТАЕТ И НА РУССКОЙ, И НА АНГЛИЙСКОЙ РАСКЛАДКЕ!)
+      const isTypingTarget = (el) => Boolean(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable));
+
+      // Клавиатура читается только по KeyboardEvent.code: WASD работает на любой раскладке
       window.addEventListener('keydown', (e) => {
-        const code = e.code || '';
-        const k = (e.key || '').toLowerCase();
-
-        if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(code)) {
-          if (gameState.mode === 'playing') e.preventDefault();
-        }
-
-        if (code === 'KeyA' || code === 'ArrowLeft' || k === 'a' || k === 'ф') input.left = true;
-        if (code === 'KeyD' || code === 'ArrowRight' || k === 'd' || k === 'в') input.right = true;
-        if (code === 'KeyS' || code === 'ArrowDown' || k === 's' || k === 'ы') {
-          input.down = true;
-          if (gameState.mode === 'playing' && player.onGround) player.dropThroughTimer = 0.22;
-        }
-        if (code === 'KeyW' || code === 'Space' || code === 'ArrowUp' || k === 'w' || k === 'ц' || e.key === ' ') {
-          if (!input.jumpHeld) {
-            input.jumpHeld = true;
-            requestJump();
-          }
-        }
-        // ЛКМ или J — атака мечом
-        if (code === 'KeyJ' || k === 'j' || k === 'о') triggerMeleeAttack();
-        // ПКМ или K или F — Блок / Защита + Парирование
-        if (code === 'KeyK' || code === 'KeyF' || k === 'k' || k === 'л' || k === 'f' || k === 'а') {
-          if (!input.blockHeld) {
-            input.blockHeld = true;
-            triggerParry();
-          }
-        }
-        // Shift или L — Рывок (Dash)
-        if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyL' || e.key === 'Shift' || k === 'l' || k === 'д') {
-          triggerDash();
-        }
-        // E или Q — Спецспособность / Оружие / Волна
-        if (code === 'KeyE' || k === 'e' || k === 'у') triggerBlaster();
-        if (code === 'KeyQ' || k === 'q' || k === 'й') triggerShockwave();
-        if (code === 'KeyC' || k === 'c' || k === 'с') triggerGrapple();
-        if (code === 'KeyR' || k === 'r' || k === 'к') triggerTimeSlow();
-        if (code === 'KeyM' || k === 'm' || k === 'ь') SoundEngine.toggleMusic();
-        if (code === 'KeyN' || k === 'n' || k === 'т') SoundEngine.nextTrack();
-        if (code === 'F3' || e.key === 'F3') {
-          e.preventDefault();
-          debugHitboxes = !debugHitboxes;
-          showToast(`Debug Коллайдеры и Ввод: ${debugHitboxes ? 'ВКЛ' : 'ВЫКЛ'}`);
-        }
-        if (code === 'Escape' || code === 'KeyP' || e.key === 'Escape') {
+        if (isTypingTarget(e.target)) return;
+        const code = resolveKeyCode(e);
+        // Пока зажат Cmd/Win, браузер не присылает keyup для других клавиш — сбрасываем всё, чтобы ничего не залипло
+        if (code === 'MetaLeft' || code === 'MetaRight') {
           clearAllInputs();
-          if (gameState.mode === 'playing') pauseGame();
-          else if (gameState.mode === 'paused') resumeGame();
+          return;
+        }
+        // Сочетания браузера (Ctrl+R, Ctrl+W, Alt+…) — не игровой ввод
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const playing = gameState.mode === 'playing';
+        if (playing && GAME_KEY_CODES.has(code)) {
+          e.preventDefault();
+          // Пробел не должен «нажимать» кнопку интерфейса, на которой остался фокус
+          const focused = document.activeElement;
+          if (focused && focused !== canvas && focused.tagName === 'BUTTON') focused.blur();
+        }
+        // Автоповтор только восстанавливает удержание (например, после паузы), но не повторяет действие
+        if (!e.repeat && KEY_HOLD[code] === 'left') lastHorizontalDir = -1;
+        if (!e.repeat && KEY_HOLD[code] === 'right') lastHorizontalDir = 1;
+        heldCodes.add(code);
+        syncKeyboard();
+        if (e.repeat) return;
+
+        switch (code) {
+          case 'KeyS':
+          case 'ArrowDown':
+            tryDropThrough();
+            break;
+          case 'KeyW':
+          case 'ArrowUp':
+          case 'Space':
+            requestJump();
+            break;
+          case 'KeyJ':
+            // W / ↑ + J — удар вверх
+            triggerMeleeAttack(input.up ? 'up' : 'forward');
+            break;
+          case 'KeyI':
+            triggerMeleeAttack('up');
+            break;
+          case 'KeyK':
+          case 'KeyF':
+            triggerParry();
+            break;
+          case 'ShiftLeft':
+          case 'ShiftRight':
+          case 'KeyL':
+            triggerDash();
+            break;
+          case 'KeyE':
+            triggerBlaster();
+            break;
+          case 'KeyQ':
+            triggerShockwave();
+            break;
+          case 'KeyC':
+            triggerGrapple();
+            break;
+          case 'KeyR':
+            triggerTimeSlow();
+            break;
+          case 'KeyM':
+            SoundEngine.toggleMusic();
+            break;
+          case 'KeyN':
+            SoundEngine.nextTrack();
+            break;
+          case 'F3':
+            e.preventDefault();
+            debugHitboxes = !debugHitboxes;
+            showToast(`Debug Коллайдеры и Ввод: ${debugHitboxes ? 'ВКЛ' : 'ВЫКЛ'}`);
+            break;
+          case 'Escape':
+          case 'KeyP':
+            clearAllInputs();
+            if (gameState.mode === 'playing') pauseGame();
+            else if (gameState.mode === 'paused') resumeGame();
+            break;
+          default:
+            break;
         }
       }, { passive: false });
 
       window.addEventListener('keyup', (e) => {
-        const code = e.code || '';
-        const k = (e.key || '').toLowerCase();
-        if (code === 'KeyA' || code === 'ArrowLeft' || k === 'a' || k === 'ф') input.left = false;
-        if (code === 'KeyD' || code === 'ArrowRight' || k === 'd' || k === 'в') input.right = false;
-        if (code === 'KeyS' || code === 'ArrowDown' || k === 's' || k === 'ы') input.down = false;
-        if (code === 'KeyW' || code === 'Space' || code === 'ArrowUp' || k === 'w' || k === 'ц' || e.key === ' ') input.jumpHeld = false;
-        if (code === 'KeyK' || code === 'KeyF' || k === 'k' || k === 'л' || k === 'f' || k === 'а') input.blockHeld = false;
-      });
+        const code = resolveKeyCode(e);
+        if (code === 'MetaLeft' || code === 'MetaRight') {
+          clearAllInputs();
+          return;
+        }
+        if (gameState.mode === 'playing' && GAME_KEY_CODES.has(code) && !isTypingTarget(e.target)) e.preventDefault();
+        heldCodes.delete(code);
+        syncKeyboard();
+      }, { passive: false });
 
+      // Мышь: ЛКМ — меч (курсор над героем — удар вверх), колесо вверх / средняя кнопка — удар вверх, ПКМ — блок
       canvas.addEventListener('mousedown', (e) => {
         canvas.focus();
         if (gameState.mode !== 'playing') return;
-        if (e.button === 0) triggerMeleeAttack();
-        else if (e.button === 2) {
-          input.blockHeld = true;
+        mouseState.sx = e.clientX;
+        mouseState.sy = e.clientY;
+        if (e.button === 0) {
+          const up = mouseAimsUp();
+          if (!up && !input.left && !input.right) {
+            // Стоя на месте, герой бьёт в сторону курсора
+            const rect = canvas.getBoundingClientRect();
+            const worldX = (e.clientX - rect.left) * (canvas.width / Math.max(1, rect.width)) + gameState.cameraX;
+            player.facing = worldX >= player.x + player.w / 2 ? 1 : -1;
+          }
+          setInput('mouse', 'attack', true);
+          triggerMeleeAttack(up ? 'up' : 'forward');
+        } else if (e.button === 1) {
+          e.preventDefault();
+          triggerMeleeAttack('up');
+        } else if (e.button === 2) {
+          setInput('mouse', 'block', true);
           triggerParry();
         }
       });
 
-      window.addEventListener('mouseup', (e) => {
-        if (e.button === 2) input.blockHeld = false;
+      window.addEventListener('mousemove', (e) => {
+        mouseState.sx = e.clientX;
+        mouseState.sy = e.clientY;
       });
+
+      window.addEventListener('mouseup', (e) => {
+        if (e.button === 0) setInput('mouse', 'attack', false);
+        if (e.button === 2) setInput('mouse', 'block', false);
+      });
+
+      canvas.addEventListener('wheel', (e) => {
+        if (gameState.mode !== 'playing') return;
+        e.preventDefault();
+        if (e.deltaY < 0) triggerMeleeAttack('up');
+      }, { passive: false });
 
       function bindHold(id, onDown, onUp) {
         const btn = document.getElementById(id);
@@ -4622,12 +5792,13 @@
         btn.addEventListener('pointercancel', end);
       }
 
-      bindHold('btnTouchLeft', () => { input.left = true; }, () => { input.left = false; });
-      bindHold('btnTouchRight', () => { input.right = true; }, () => { input.right = false; });
-      bindHold('btnTouchDown', () => { input.down = true; player.dropThroughTimer = 0.22; }, () => { input.down = false; });
-      bindHold('btnTouchJump', () => { input.jumpHeld = true; requestJump(); }, () => { input.jumpHeld = false; });
+      bindHold('btnTouchLeft', () => setInput('touch', 'left', true), () => setInput('touch', 'left', false));
+      bindHold('btnTouchRight', () => setInput('touch', 'right', true), () => setInput('touch', 'right', false));
+      bindHold('btnTouchDown', () => { setInput('touch', 'down', true); tryDropThrough(); }, () => setInput('touch', 'down', false));
+      bindHold('btnTouchJump', () => { setInput('touch', 'jump', true); requestJump(); }, () => setInput('touch', 'jump', false));
       bindHold('btnTouchDash', () => { triggerDash(); }, null);
-      bindHold('btnTouchAttack', () => { triggerMeleeAttack(); }, null);
+      bindHold('btnTouchAttack', () => { setInput('touch', 'attack', true); triggerMeleeAttack('forward'); }, () => setInput('touch', 'attack', false));
+      bindHold('btnTouchAttackUp', () => { setInput('touch', 'attackUp', true); triggerMeleeAttack('up'); }, () => setInput('touch', 'attackUp', false));
       bindHold('btnTouchParry', () => { triggerParry(); triggerGrapple(); }, null);
       bindHold('btnTouchBlaster', () => { if (player.focus > 0) triggerBlaster(); else triggerShockwave(); }, null);
 
@@ -4752,6 +5923,10 @@
           player.y = player.checkpointY;
           player.vx = 0;
           player.vy = 0;
+          resetPlayerPosture();
+          player.silenceTimer = 0;
+          gameState.projectiles = [];
+          gameState.dangerZones = [];
           player.invulnTimer = 1.5;
           hideAllModals();
           gameState.mode = 'playing';
@@ -4771,6 +5946,7 @@
     function mainLoop(now) {
       const rawDt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
       lastTime = now;
+      pollGamepad();
 
       const subSteps = 2;
       const subDt = rawDt / subSteps;
